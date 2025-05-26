@@ -1,8 +1,5 @@
-- name: Set up SSH key-based authentication
-  hosts: all
-  vars:
-    ansible_user: olivier
-  tasks:
+---
+
     - name: Ensure .ssh directory exists
       file:
         path: ~/.ssh
