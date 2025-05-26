@@ -1,11 +1,5 @@
 ---
 
-  - name: check for overlayfs
-    shell: df /|grep -q overlay
-    register: overlayfs_not_found
-    ignore_errors: yes
-    tags: always
-
   - name: update
     apt:
       cache_valid_time: 3600
@@ -13,7 +7,6 @@
     register: update_result
     retries: 5
     until: update_result is success
-    when: "overlayfs_not_found.rc"
     tags: always
 
   - name: list upgradeable
@@ -34,7 +27,6 @@
     retries: 5
     register: upgrade_res
     until: upgrade_res is success
-    when: "overlayfs_not_found.rc"
     tags: always
 
   - name: identify autoremove candidates
