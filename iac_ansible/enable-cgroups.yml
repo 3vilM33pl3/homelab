@@ -1,0 +1,7 @@
+---
+- name: Enable cgroups
+  hosts: all
+  become: yes
+  tasks:
+    - include_tasks: enable-cgroups-task.yml
+      tags: always

@@ -12,7 +12,7 @@ ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory-k3.ini ssh-key-aut
 ```
 
 ## Upgrade system
-```
+```shell
 ansible-playbook -i inventory-k3.ini apt-upgrade.yml
 ```
 
