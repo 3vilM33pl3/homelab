@@ -1,4 +1,7 @@
 ---
+    - name: Add host key to known_hosts
+      shell: "ssh-keyscan -H {{ inventory_hostname }} >> ~/.ssh/known_hosts"
+      delegate_to: localhost
 
     - name: Ensure .ssh directory exists
       file:
