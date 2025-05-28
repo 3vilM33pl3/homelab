@@ -41,8 +41,8 @@
     - name: Create agent config file
       copy:
         content: |
-          K3S_URL=https://{{ server_ip.stdout }}:6443
-          K3S_TOKEN={{ k3s_token.stdout }}
+          server: https://{{ server_ip.stdout }}:6443
+          token: {{ k3s_token.stdout }}
         dest: /tmp/k3s-agent-config
-        mode: '0600'
+        mode: '0644'
       delegate_to: localhost 

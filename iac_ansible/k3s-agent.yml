@@ -3,43 +3,19 @@
   hosts: pink,orange
   become: yes
   tasks:
-    - name: Check if running on Raspberry Pi
-      shell: grep -q "Raspberry Pi" /proc/device-tree/model
-      register: is_raspberry_pi
-      ignore_errors: yes
-
-    - name: Enable cgroups
-      copy:
-        content: |
-          cgroup_memory=1 cgroup_enable=memory
-        dest: /boot/firmware/cmdline.txt
-        mode: '0644'
-      when: is_raspberry_pi.rc == 0
-
-    - name: Enable cgroups in config.txt
-      copy:
-        content: |
-          dtoverlay=cgroup-memory
-        dest: /boot/firmware/config.txt
-        mode: '0644'
-      when: is_raspberry_pi.rc == 0
-
-    - name: Reboot if cgroups were enabled
-      reboot:
-        msg: "Reboot initiated by Ansible for cgroups configuration"
-        connect_timeout: 5
-        reboot_timeout: 300
-        pre_reboot_delay: 0
-        post_reboot_delay: 30
-      when: is_raspberry_pi.rc == 0
-
     - name: Download K3s installation script
       get_url:
         url: https://get.k3s.io
         dest: /tmp/k3s-install.sh
         mode: '0755'
 
-    - name: Copy agent config
+    - name: Create directory for K3s config
+      file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+
+    - name: Copy agent config  
       copy:
         src: /tmp/k3s-agent-config
         dest: /etc/rancher/k3s/config.yaml

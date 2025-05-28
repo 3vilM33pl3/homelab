@@ -6,3 +6,9 @@
   tasks:
   - include_tasks: apt-upgrade-tasks.yml
     tags: always
+
+  - name: Install vim
+    apt:
+      name: vim
+      state: present
+    tags: always
