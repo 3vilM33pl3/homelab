@@ -1,0 +1,16 @@
+---
+
+- name: upgrade/update apt based hosts
+  hosts: all
+  become: yes
+  vars:
+    ansible_user: olivier
+  tasks:
+  - include_tasks: software/apt-upgrade-tasks.yml
+    tags: always
+
+  - include_tasks: software/vim.yml
+    tags: always
+
+  - include_tasks: software/rust.yml
+    tags: always
