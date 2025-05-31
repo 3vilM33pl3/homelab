@@ -9,8 +9,11 @@
   - include_tasks: software/apt-upgrade-tasks.yml
     tags: always
 
-  - include_tasks: software/vim.yml
+  - include_tasks: software/vim-task.yml
     tags: always
 
-  - include_tasks: software/rust.yml
+  - include_tasks: software/rust-task.yml
+    tags: always
+
+  - include_tasks: software/helm-task.yml
     tags: always
