@@ -1,0 +1,6 @@
+---
+- name: Install Yubikey tools
+  apt:
+    name: yubikey-manager
+    state: present
+  tags: always
