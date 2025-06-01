@@ -17,3 +17,6 @@
 
   - include_tasks: software/helm-task.yml
     tags: always
+
+  - include_tasks: software/i2c-task.yml
+    tags: always
