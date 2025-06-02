@@ -1,0 +1,5 @@
+---
+- name: Uninstall K3s agent
+  shell: |
+    /usr/local/bin/k3s-agent-uninstall.sh
+  tags: always

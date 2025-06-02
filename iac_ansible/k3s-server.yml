@@ -11,9 +11,14 @@
         mode: '0755'
 
     - name: Install K3s Server
-      shell: /tmp/k3s-install.sh server
+      shell: /tmp/k3s-install.sh server --disable traefik
       args:
         creates: /usr/local/bin/k3s
+
+    - name: Create ingres-nginx helm chart
+      copy: 
+        src: ./files/ingress-nginx.yaml
+        dest: /var/lib/rancher/k3s/server/manifests/ingress-nginx.yaml
 
     - name: Wait for K3s to be ready
       shell: k3s kubectl get nodes
@@ -27,22 +32,16 @@
       register: k3s_token
       no_log: true
 
-    - name: Create token file for agents
-      copy:
-        content: "{{ k3s_token.stdout }}"
-        dest: /tmp/k3s-token
-        mode: '0600'
-      delegate_to: localhost
-
     - name: Get server IP
       shell: hostname -I | awk '{print $1}'
       register: server_ip
 
     - name: Create agent config file
+      become: no
       copy:
         content: |
           server: https://{{ server_ip.stdout }}:6443
           token: {{ k3s_token.stdout }}
-        dest: /tmp/k3s-agent-config
+        dest: ../k3s-agent-config
         mode: '0644'
       delegate_to: localhost 

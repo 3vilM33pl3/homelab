@@ -17,7 +17,7 @@
 
     - name: Copy agent config  
       copy:
-        src: /tmp/k3s-agent-config
+        src: ../k3s-agent-config
         dest: /etc/rancher/k3s/config.yaml
         mode: '0600'
 

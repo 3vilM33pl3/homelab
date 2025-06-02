@@ -1,0 +1,7 @@
+---
+- name: Uninstall K3s Server
+  shell: |
+    /usr/local/bin/k3s-uninstall.sh
+  args:
+    creates: /usr/local/bin/k3s-uninstall.sh
+  tags: always
