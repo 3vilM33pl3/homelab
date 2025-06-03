@@ -1,5 +1,4 @@
 ---
-
 - name: upgrade/update apt based hosts
   hosts: all
   become: yes
@@ -22,4 +21,7 @@
     tags: always
 
   - include_tasks: software/yubikey-task.yml
+    tags: always
+
+  - include_tasks: software/step-cli-task.yml
     tags: always
