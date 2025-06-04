@@ -1,0 +1,7 @@
+---
+- name: Uninstall K3s server
+  hosts: white
+  become: yes
+  tasks:
+    - include_tasks: ./k3s-uninstall-server-task.yml
+  tags: always
