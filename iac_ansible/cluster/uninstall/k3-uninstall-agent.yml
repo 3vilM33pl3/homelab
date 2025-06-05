@@ -1,0 +1,7 @@
+---
+- name: Uninstall K3s agent
+  hosts: orange, pink
+  become: yes
+  tasks:
+    - include_tasks: ./k3s-uninstall-agent-task.yml
+  tags: always
