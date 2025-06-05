@@ -15,11 +15,6 @@
       args:
         creates: /usr/local/bin/k3s
 
-    - name: Create ingres-nginx helm chart
-      copy: 
-        src: ./files/ingress-nginx.yaml
-        dest: /var/lib/rancher/k3s/server/manifests/ingress-nginx.yaml
-
     - name: Wait for K3s to be ready
       shell: k3s kubectl get nodes
       register: k3s_ready
