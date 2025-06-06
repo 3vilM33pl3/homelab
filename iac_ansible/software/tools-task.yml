@@ -1,0 +1,15 @@
+---
+- name: Install tools
+  apt:
+    name: "{{ item }}"
+    state: present
+  tags: always
+  with_items:
+    - lshw
+    - lsof
+    - net-tools
+    - dnsutils
+    - iputils-ping
+    - iputils-tracepath
+    - iputils-clockdiff
+
