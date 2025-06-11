@@ -1,4 +1,3 @@
----
 - name: upgrade/update apt based hosts
   hosts: all
   become: yes
@@ -25,3 +24,7 @@
 
   - include_tasks: software/step-cli-task.yml
     tags: always
+
+  - include_tasks: software/tools-task.yml
+    tags: always
+
