@@ -1,0 +1,10 @@
+---
+- name: Install CA Root Certificate
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install CA Root Certificate
+      command: step ca bootstrap --ca-url "https://ca.metatao.net" --fingerprint 5454a1492ac564ba2b33fb0feee2914be635ef19cc26da82e4d7f5d10ba72b2e
+      args:
+        creates: /home/olivier/.step/certs/root_ca.crt
+        creates: /home/olivier/.step/config/defaults.json
