@@ -5,3 +5,9 @@
     state: present
   tags: always
 
+- name: Ensure 'set paste' is in Vim configuration
+  lineinfile:
+    path: /etc/vim/vimrc
+    line: 'set paste'
+    create: yes
+
