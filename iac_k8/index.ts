@@ -40,3 +40,31 @@ const ingressController = new kubernetes.helm.v3.Release("ingresscontroller", {
 
 // Export some values for use elsewhere
 export const name = ingressController.name;
+
+// Define the Nginx deployment
+const nginxDeployment = new kubernetes.apps.v1.Deployment("nginx", {
+    spec: {
+        selector: { matchLabels: { app: "nginx" } },
+        replicas: 1,
+        template: {
+            metadata: { labels: { app: "nginx" } },
+            spec: {
+                containers: [{
+                    name: "nginx",
+                    image: "nginx",
+                    ports: [{ containerPort: 80 }],
+                }],
+            },
+        },
+    },
+});
+
+// Define the service with a LoadBalancer and a static IP
+const nginxService = new kubernetes.core.v1.Service("nginx", {
+    spec: {
+        type: "LoadBalancer",
+        loadBalancerIP: "10.22.6.93", 
+        selector: nginxDeployment.spec.template.metadata.labels,
+        ports: [{ port: 80, targetPort: 80 }],
+    },
+});
