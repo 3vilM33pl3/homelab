@@ -1,0 +1,7 @@
+- name: Set up SSH key-based authentication
+  hosts: all
+  vars:
+    ansible_user: olivier
+  tasks:
+  - include_tasks: ssh-key-auth-task.yml
+    tags: always

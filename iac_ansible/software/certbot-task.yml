@@ -1,0 +1,12 @@
+---
+- name: Install Certbot
+  package:
+    name: certbot
+    state: present
+
+- name: Configure Certbot to use custom CA
+  lineinfile:
+    path: /etc/letsencrypt/cli.ini
+    regexp: '^#?ca ='
+    line: 'ca = https://ca.metatao.net'
+    create: yes
