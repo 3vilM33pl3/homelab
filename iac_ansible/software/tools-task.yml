@@ -13,4 +13,6 @@
     - iputils-tracepath
     - iputils-clockdiff
     - duf
+    - tmux
+    - mc
 
