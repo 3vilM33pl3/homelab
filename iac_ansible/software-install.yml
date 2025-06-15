@@ -13,6 +13,9 @@
   - include_tasks: software/rust-task.yml
     tags: always
 
+  - include_tasks: software/rust-cargo-task.yml
+    tags: always
+
   - include_tasks: software/helm-task.yml
     tags: always
 

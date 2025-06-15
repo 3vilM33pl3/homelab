@@ -12,4 +12,5 @@
     - iputils-ping
     - iputils-tracepath
     - iputils-clockdiff
+    - duf
 

@@ -1,0 +1,10 @@
+---
+- name: Install dust using cargo
+  become_user: "{{ ansible_user }}"
+  community.general.cargo:
+    name: du-dust
+    locked: true
+  environment:
+    PATH: "/home/{{ ansible_user }}/.cargo/bin:{{ ansible_env.PATH }}"
+
+

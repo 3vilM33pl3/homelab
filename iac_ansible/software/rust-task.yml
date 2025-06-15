@@ -1,36 +1,35 @@
 ---
+- name: Install Rust via rustup for a specific user
+  become: yes
+  become_user: "{{ ansible_user }}"
+  shell: |
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  args:
+    creates: "/home/{{ ansible_user }}/.cargo/bin/rustc"
 
-  - name: Install Rust via rustup for a specific user
-    become: yes
-    become_user: "{{ ansible_user }}"
-    shell: |
-      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    args:
-      creates: "/home/{{ ansible_user }}/.cargo/bin/rustc"
+- name: Add Rust to PATH in .bashrc
+  become: yes
+  become_user: "{{ ansible_user }}"
+  lineinfile:
+    path: "/home/{{ ansible_user }}/.bashrc"
+    line: 'export PATH="$HOME/.cargo/bin:$PATH"'
+    insertafter: EOF
 
-  - name: Add Rust to PATH in .bashrc
-    become: yes
-    become_user: "{{ ansible_user }}"
-    lineinfile:
-      path: "/home/{{ ansible_user }}/.bashrc"
-      line: 'export PATH="$HOME/.cargo/bin:$PATH"'
-      insertafter: EOF
+- name: Add rust and cargo completion to .bashrc
+  become: yes
+  become_user: "{{ ansible_user }}"
+  shell: |
+    mkdir -p ~/.local/share/bash-completion/completions/
+    ~/.cargo/bin/rustup completions bash > ~/.local/share/bash-completion/completions/rustup
+    ~/.cargo/bin/rustup completions bash cargo > ~/.local/share/bash-completion/completions/cargo
+  args:
+    creates: "/home/{{ ansible_user }}/.local/share/bash-completion/completions/rustup"
+    creates: "/home/{{ ansible_user }}/.local/share/bash-completion/completions/cargo"
 
-  - name: Add rust and cargo completion to .bashrc
-    become: yes
-    become_user: "{{ ansible_user }}"
-    shell: |
-      mkdir -p ~/.local/share/bash-completion/completions/
-      ~/.cargo/bin/rustup completions bash > ~/.local/share/bash-completion/completions/rustup
-      ~/.cargo/bin/rustup completions bash cargo > ~/.local/share/bash-completion/completions/cargo
-    args:
-      creates: "/home/{{ ansible_user }}/.local/share/bash-completion/completions/rustup"
-      creates: "/home/{{ ansible_user }}/.local/share/bash-completion/completions/cargo"
-
-  - name: Check Rust installation
-    become: yes
-    become_user: "{{ ansible_user }}"
-    command: /home/{{ ansible_user }}/.cargo/bin/rustc --version
-    register: rust_version
-    changed_when: false
+- name: Check Rust installation
+  become: yes
+  become_user: "{{ ansible_user }}"
+  command: /home/{{ ansible_user }}/.cargo/bin/rustc --version
+  register: rust_version
+  changed_when: false
 
