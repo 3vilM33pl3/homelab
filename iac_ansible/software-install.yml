@@ -33,3 +33,6 @@
 
   - include_tasks: software/certbot-task.yml
     tags: always
+
+  - include_tasks: software/info-display-task.yml
+    tags: always

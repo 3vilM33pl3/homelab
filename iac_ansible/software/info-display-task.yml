@@ -1,0 +1,27 @@
+---
+- name: Upload info-display debian package
+  copy:
+    src: packages/info-display_0.1.0-1_arm64.deb
+    dest: /tmp/info-display_0.1.0-1_arm64.deb
+    mode: '0644'
+  tags: always
+
+- name: Install info-display package
+  apt:
+    deb: /tmp/info-display_0.1.0-1_arm64.deb
+    state: present
+  tags: always
+
+- name: Clean up temporary package file
+  file:
+    path: /tmp/info-display_0.1.0-1_arm64.deb
+    state: absent
+  tags: always
+
+- name: Add cron job to run info-display every 5 minutes
+  cron:
+    name: "Run info-display"
+    minute: "*/5"
+    job: "/usr/bin/info-display"
+    user: root
+  tags: always
