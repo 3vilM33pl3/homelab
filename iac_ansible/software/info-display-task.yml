@@ -1,27 +1,34 @@
 ---
+- name: Set info-display package variables
+  set_fact:
+    info_display_package: "info-display"
+    info_display_version: "0.1.1-1"
+    info_display_arch: "arm64"
+  tags: always
+
 - name: Upload info-display debian package
   copy:
-    src: packages/info-display_0.1.0-1_arm64.deb
-    dest: /tmp/info-display_0.1.0-1_arm64.deb
+    src: "packages/{{ info_display_package }}_{{ info_display_version }}_{{ info_display_arch }}.deb"
+    dest: "/tmp/{{ info_display_package }}_{{ info_display_version }}_{{ info_display_arch }}.deb"
     mode: '0644'
   tags: always
 
 - name: Install info-display package
   apt:
-    deb: /tmp/info-display_0.1.0-1_arm64.deb
+    deb: "/tmp/{{ info_display_package }}_{{ info_display_version }}_{{ info_display_arch }}.deb"
     state: present
   tags: always
 
 - name: Clean up temporary package file
   file:
-    path: /tmp/info-display_0.1.0-1_arm64.deb
+    path: "/tmp/{{ info_display_package }}_{{ info_display_version }}_{{ info_display_arch }}.deb"
     state: absent
   tags: always
 
 - name: Add cron job to run info-display every 5 minutes
   cron:
-    name: "Run info-display"
+    name: "Run {{ info_display_package }}"
     minute: "*/5"
-    job: "/usr/bin/info-display"
+    job: "/usr/bin/{{ info_display_package }}"
     user: root
   tags: always
