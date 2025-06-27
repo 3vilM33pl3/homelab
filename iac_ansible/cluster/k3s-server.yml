@@ -11,7 +11,7 @@
         mode: '0755'
 
     - name: Install K3s Server
-      shell: /tmp/k3s-install.sh server --disable traefik
+      shell: /tmp/k3s-install.sh server --disable traefik --flannel-backend=none --disable-network-policy
       args:
         creates: /usr/local/bin/k3s
 

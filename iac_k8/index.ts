@@ -1,6 +1,12 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as kubernetes from "@pulumi/kubernetes";
 
+// Import networking components (must be installed first)
+import "./networking/cilium";
+
+// Import storage components
+import "./storage/longhorn";
+
 const config = new pulumi.Config();
 const k8sNamespace = config.get("k8sNamespace") || "default";
 const appLabels = {

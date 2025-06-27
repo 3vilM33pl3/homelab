@@ -36,3 +36,6 @@
 
   - include_tasks: software/info-display-task.yml
     tags: always
+
+  - include_tasks: software/longhorn-prep-task.yml
+    tags: always
