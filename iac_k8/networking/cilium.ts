@@ -30,7 +30,12 @@ const cilium = new kubernetes.helm.v3.Release("cilium", {
                     hosts: ["hubble.metatao.net"],
                     annotations: {
                         "kubernetes.io/ingress.class": "nginx",
+                        "cert-manager.io/cluster-issuer": "metatao-acme-issuer",
                     },
+                    tls: [{
+                        secretName: "hubble-tls-cert",
+                        hosts: ["hubble.metatao.net"],
+                    }],
                 },
             },
         },
@@ -42,7 +47,7 @@ const cilium = new kubernetes.helm.v3.Release("cilium", {
         prometheus: {
             enabled: true,
             serviceMonitor: {
-                enabled: true,
+                enabled: false, // Disable for now to avoid CRD issues
             },
         },
         
@@ -57,7 +62,7 @@ const cilium = new kubernetes.helm.v3.Release("cilium", {
             prometheus: {
                 enabled: true,
                 serviceMonitor: {
-                    enabled: true,
+                    enabled: false, // Disable for now to avoid CRD issues
                 },
             },
         },

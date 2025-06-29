@@ -1,11 +1,14 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as kubernetes from "@pulumi/kubernetes";
 
-// Import networking components (must be installed first)
+// Import networking components (assumes K3s is installed via Ansible)
 import "./networking/cilium";
 
 // Import storage components
 import "./storage/longhorn";
+
+// Import certificate management
+import "./certificates/cert-manager";
 
 const config = new pulumi.Config();
 const k8sNamespace = config.get("k8sNamespace") || "default";
@@ -69,7 +72,7 @@ const nginxDeployment = new kubernetes.apps.v1.Deployment("nginx", {
 const nginxService = new kubernetes.core.v1.Service("nginx", {
     spec: {
         type: "LoadBalancer",
-        loadBalancerIP: "10.22.6.93", 
+        loadBalancerIP: "10.22.6.95", 
         selector: nginxDeployment.spec.template.metadata.labels,
         ports: [{ port: 80, targetPort: 80 }],
     },
