@@ -16,6 +16,7 @@
     return_content: yes
   register: github_release
   delegate_to: localhost
+  become: no
   run_once: true
   tags: always
 
