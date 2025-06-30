@@ -19,7 +19,7 @@ const certManager = new kubernetes.helm.v3.Release("cert-manager", {
     version: "v1.13.3",
 });
 
-// Create ACME ClusterIssuer for your CA
+// Create ACME ClusterIssuer for your CA (wait for cert-manager to be ready)
 const acmeClusterIssuer = new kubernetes.apiextensions.CustomResource("acme-issuer", {
     apiVersion: "cert-manager.io/v1",
     kind: "ClusterIssuer",
@@ -50,7 +50,14 @@ const acmeClusterIssuer = new kubernetes.apiextensions.CustomResource("acme-issu
             ],
         },
     },
-}, { dependsOn: certManager });
+}, { 
+    dependsOn: certManager,
+    // Wait for cert-manager to be fully ready
+    customTimeouts: {
+        create: "5m",
+        update: "5m",
+    },
+});
 
 // Export cert-manager information
 export const certManagerReleaseName = certManager.name;

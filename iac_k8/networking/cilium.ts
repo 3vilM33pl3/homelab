@@ -30,7 +30,7 @@ const cilium = new kubernetes.helm.v3.Release("cilium", {
                     hosts: ["hubble.metatao.net"],
                     annotations: {
                         "kubernetes.io/ingress.class": "nginx",
-                        "cert-manager.io/cluster-issuer": "metatao-acme-issuer",
+                        "cert-manager.io/cluster-issuer": "metatao-acme-issuer", // Enable after cert-manager is ready
                     },
                     tls: [{
                         secretName: "hubble-tls-cert",
@@ -75,6 +75,7 @@ const cilium = new kubernetes.helm.v3.Release("cilium", {
         // Enable native routing mode for better performance
         routingMode: "native",
         autoDirectNodeRoutes: true,
+        ipv4NativeRoutingCIDR: "10.22.6.0/24", // Your node network CIDR
         
         // Security settings
         encryption: {

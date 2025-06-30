@@ -50,7 +50,7 @@ const longhorn = new kubernetes.helm.v3.Release("longhorn", {
             tlsSecret: "longhorn-tls-cert",
             annotations: {
                 "kubernetes.io/ingress.class": "nginx",
-                "cert-manager.io/cluster-issuer": "metatao-acme-issuer",
+                // "cert-manager.io/cluster-issuer": "metatao-acme-issuer", // Enable after cert-manager is ready
                 "nginx.ingress.kubernetes.io/auth-type": "basic",
                 "nginx.ingress.kubernetes.io/auth-secret": "longhorn-auth",
                 "nginx.ingress.kubernetes.io/auth-realm": "Authentication Required - Longhorn",
