@@ -1,0 +1,160 @@
+name: Build and Release info-display
+
+on:
+  push:
+    tags:
+      - 'info-display-v*'
+    paths:
+      - 'raspi-info-display/**'
+  pull_request:
+    paths:
+      - 'raspi-info-display/**'
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a release'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        targets: aarch64-unknown-linux-gnu
+        
+    - name: Install cross-compilation dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu pkg-config libudev-dev
+        
+    - name: Install cargo-deb
+      run: cargo install cargo-deb
+      
+    - name: Cache Cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-registry-
+          
+    - name: Cache Cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-index-
+          
+    - name: Cache target directory
+      uses: actions/cache@v4
+      with:
+        path: raspi-info-display/target
+        key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-target-
+    
+    - name: Configure cross-compilation
+      run: |
+        cd raspi-info-display
+        mkdir -p .cargo
+        cat > .cargo/config.toml << EOF
+        [target.aarch64-unknown-linux-gnu]
+        linker = "aarch64-linux-gnu-gcc"
+        EOF
+        
+    - name: Test build (check compilation)
+      run: |
+        cd raspi-info-display
+        cargo check --target aarch64-unknown-linux-gnu
+        
+    - name: Build release binary
+      run: |
+        cd raspi-info-display
+        cargo build --release --target aarch64-unknown-linux-gnu
+        
+    - name: Build Debian package
+      run: |
+        cd raspi-info-display
+        # Copy the ARM64 binary to the expected location for cargo-deb
+        mkdir -p target/release
+        cp target/aarch64-unknown-linux-gnu/release/info_display target/release/
+        cargo deb --target aarch64-unknown-linux-gnu --no-build
+        
+    - name: Get package version
+      id: version
+      run: |
+        cd raspi-info-display
+        VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "package_name=info-display_${VERSION}_arm64.deb" >> $GITHUB_OUTPUT
+        
+    - name: Rename package with architecture
+      run: |
+        cd raspi-info-display
+        mv target/debian/info-display_*.deb target/debian/${{ steps.version.outputs.package_name }}
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: info-display-${{ steps.version.outputs.version }}
+        path: |
+          raspi-info-display/target/debian/${{ steps.version.outputs.package_name }}
+          raspi-info-display/target/aarch64-unknown-linux-gnu/release/info_display
+        retention-days: 30
+        
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/info-display-v') || github.event.inputs.create_release == 'true'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name || format('info-display-v{0}', steps.version.outputs.version) }}
+        name: info-display v${{ steps.version.outputs.version }}
+        body: |
+          ## info-display v${{ steps.version.outputs.version }}
+          
+          Raspberry Pi OLED display service for showing system information.
+          
+          ### Installation
+          
+          Download the `.deb` package and install on your Raspberry Pi:
+          
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name || format('info-display-v{0}', steps.version.outputs.version) }}/${{ steps.version.outputs.package_name }}
+          sudo dpkg -i ${{ steps.version.outputs.package_name }}
+          sudo apt-get install -f  # Fix any dependency issues
+          sudo systemctl enable info-display.service
+          sudo systemctl start info-display.service
+          ```
+          
+          ### Features
+          
+          - Shows hostname, IP address, CPU temperature
+          - Displays memory usage, disk usage, and uptime  
+          - Works with SSD1306 OLED displays via I2C
+          - Systemd service for automatic startup
+          - ARM64 architecture (Raspberry Pi 4/5)
+          
+          ### Hardware Requirements
+          
+          - Raspberry Pi with ARM64 architecture
+          - SSD1306 OLED display connected via I2C
+          - I2C enabled in raspi-config
+        files: |
+          raspi-info-display/target/debian/${{ steps.version.outputs.package_name }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
