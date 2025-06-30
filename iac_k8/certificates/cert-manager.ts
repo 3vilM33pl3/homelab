@@ -19,7 +19,11 @@ const certManager = new kubernetes.helm.v3.Release("cert-manager", {
     version: "v1.13.3",
 });
 
-// Create ACME ClusterIssuer for your CA (wait for cert-manager to be ready)
+// Note: ClusterIssuer will be created manually after cert-manager is ready
+// This avoids timing issues with webhooks during initial deployment
+
+// Uncomment and deploy separately after cert-manager is running:
+/*
 const acmeClusterIssuer = new kubernetes.apiextensions.CustomResource("acme-issuer", {
     apiVersion: "cert-manager.io/v1",
     kind: "ClusterIssuer",
@@ -28,8 +32,8 @@ const acmeClusterIssuer = new kubernetes.apiextensions.CustomResource("acme-issu
     },
     spec: {
         acme: {
-            server: "https://ca.metatao.net/acme/acme/directory", // Adjust to your ACME endpoint
-            email: "admin@metatao.net", // Your email for ACME registration
+            server: "https://ca.metatao.net/acme/acme/directory",
+            email: "admin@metatao.net",
             privateKeySecretRef: {
                 name: "metatao-acme-private-key",
             },
@@ -37,28 +41,16 @@ const acmeClusterIssuer = new kubernetes.apiextensions.CustomResource("acme-issu
                 {
                     http01: {
                         ingress: {
-                            class: "nginx", // Use nginx ingress for HTTP-01 challenge
+                            class: "nginx",
                         },
-                    },
-                },
-                {
-                    dns01: {
-                        // Add DNS-01 solver if you have DNS API access
-                        // webhook: { ... }
                     },
                 },
             ],
         },
     },
-}, { 
-    dependsOn: certManager,
-    // Wait for cert-manager to be fully ready
-    customTimeouts: {
-        create: "5m",
-        update: "5m",
-    },
-});
+}, { dependsOn: certManager });
+*/
 
 // Export cert-manager information
 export const certManagerReleaseName = certManager.name;
-export const acmeIssuerName = acmeClusterIssuer.metadata.name;
+// export const acmeIssuerName = acmeClusterIssuer.metadata.name; // Uncomment when ClusterIssuer is enabled

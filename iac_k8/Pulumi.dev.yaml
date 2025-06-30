@@ -1,2 +1,0 @@
-config:
-  homelab_k3:k8sNamespace: nginx-ingress

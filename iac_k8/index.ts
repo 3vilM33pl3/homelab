@@ -4,11 +4,11 @@ import * as kubernetes from "@pulumi/kubernetes";
 // Import networking components (assumes K3s is installed via Ansible)
 import "./networking/cilium";
 
-// Import storage components (disabled until Cilium is working)
-// import "./storage/longhorn";
+// Import storage components 
+import "./storage/longhorn";
 
-// Import certificate management (disabled for initial deployment)
-// import "./certificates/cert-manager";
+// Import certificate management
+import "./certificates/cert-manager";
 
 const config = new pulumi.Config();
 const k8sNamespace = config.get("k8sNamespace") || "default";

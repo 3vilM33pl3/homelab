@@ -30,12 +30,12 @@ const cilium = new kubernetes.helm.v3.Release("cilium", {
                     hosts: ["hubble.metatao.net"],
                     annotations: {
                         "kubernetes.io/ingress.class": "nginx",
-                        "cert-manager.io/cluster-issuer": "metatao-acme-issuer", // Enable after cert-manager is ready
+                        // "cert-manager.io/cluster-issuer": "metatao-acme-issuer", // Enable after ClusterIssuer is created
                     },
-                    tls: [{
-                        secretName: "hubble-tls-cert",
-                        hosts: ["hubble.metatao.net"],
-                    }],
+                    // tls: [{
+                    //     secretName: "hubble-tls-cert",
+                    //     hosts: ["hubble.metatao.net"],
+                    // }], // Enable after ClusterIssuer is created
                 },
             },
         },
