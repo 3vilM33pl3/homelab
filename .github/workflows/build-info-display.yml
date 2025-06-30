@@ -38,13 +38,10 @@ jobs:
         toolchain: stable
         targets: aarch64-unknown-linux-musl
         
-    - name: Install cross-compilation dependencies
+    - name: Install cross and cargo-deb
       run: |
-        sudo apt-get update
-        sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu pkg-config libudev-dev
-        
-    - name: Install cargo-deb
-      run: cargo install cargo-deb
+        cargo install cross
+        cargo install cargo-deb
       
     - name: Cache Cargo registry
       uses: actions/cache@v4
@@ -70,25 +67,15 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-target-
     
-    - name: Configure cross-compilation
-      run: |
-        cd raspi-info-display
-        mkdir -p .cargo
-        cat > .cargo/config.toml << EOF
-        [target.aarch64-unknown-linux-musl]
-        linker = "rust-lld"
-        rustflags = ["-C", "target-feature=+crt-static"]
-        EOF
-        
     - name: Test build (check compilation)
       run: |
         cd raspi-info-display
-        cargo check --target aarch64-unknown-linux-musl
+        cross check --target aarch64-unknown-linux-musl
         
     - name: Build release binary
       run: |
         cd raspi-info-display
-        cargo build --release --target aarch64-unknown-linux-musl
+        cross build --release --target aarch64-unknown-linux-musl
         
     - name: Create temporary Cargo.toml with fixed dependencies
       run: |
