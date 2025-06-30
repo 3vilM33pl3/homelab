@@ -14,16 +14,25 @@
     url: "https://api.github.com/repos/{{ github_repo }}/releases/latest"
     method: GET
     return_content: yes
+    status_code: [200, 404]
   register: github_release
   delegate_to: localhost
   become: no
   run_once: true
   tags: always
 
+- name: Check if release exists
+  set_fact:
+    release_exists: "{{ github_release.status == 200 }}"
+  run_once: true
+  tags: always
+
 - name: Extract download URL for the debian package
   set_fact:
     package_download_url: "{{ github_release.json.assets | selectattr('name', 'match', '.*\\.deb$') | map(attribute='browser_download_url') | first }}"
-  when: inventory_hostname in ['white', 'orange', 'pink']
+  when: 
+    - inventory_hostname in ['white', 'orange', 'pink']
+    - release_exists
   tags: always
 
 - name: Download info-display debian package from GitHub
@@ -32,21 +41,35 @@
     dest: "/tmp/{{ package_filename }}"
     mode: '0644'
     timeout: 30
-  when: inventory_hostname in ['white', 'orange', 'pink']
+  when: 
+    - inventory_hostname in ['white', 'orange', 'pink']
+    - release_exists
+  tags: always
+
+- name: Display message when no release is available
+  debug:
+    msg: "No GitHub releases found for {{ github_repo }}. Skipping info-display installation."
+  when: 
+    - inventory_hostname in ['white', 'orange', 'pink']
+    - not release_exists
   tags: always
 
 - name: Install info-display package
   apt:
     deb: "/tmp/{{ package_filename }}"
     state: present
-  when: inventory_hostname in ['white', 'orange', 'pink']
+  when: 
+    - inventory_hostname in ['white', 'orange', 'pink']
+    - release_exists
   tags: always
 
 - name: Clean up temporary package file
   file:
     path: "/tmp/{{ package_filename }}"
     state: absent
-  when: inventory_hostname in ['white', 'orange', 'pink']
+  when: 
+    - inventory_hostname in ['white', 'orange', 'pink']
+    - release_exists
   tags: always
 
 - name: Enable and start info-display systemd service
@@ -55,5 +78,7 @@
     enabled: yes
     state: started
     daemon_reload: yes
-  when: inventory_hostname in ['white', 'orange', 'pink']
+  when: 
+    - inventory_hostname in ['white', 'orange', 'pink']
+    - release_exists
   tags: always
