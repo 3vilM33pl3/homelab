@@ -49,11 +49,11 @@
   when: inventory_hostname in ['white', 'orange', 'pink']
   tags: always
 
-- name: Add cron job to run info-display every 5 minutes
-  cron:
-    name: "Run info_display"
-    minute: "*/5"
-    job: "/usr/bin/info_display"
-    user: root
+- name: Enable and start info-display systemd service
+  systemd:
+    name: info-display.service
+    enabled: yes
+    state: started
+    daemon_reload: yes
   when: inventory_hostname in ['white', 'orange', 'pink']
   tags: always
