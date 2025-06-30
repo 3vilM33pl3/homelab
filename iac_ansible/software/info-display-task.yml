@@ -2,33 +2,57 @@
 - name: Set info-display package variables
   set_fact:
     info_display_package: "info-display"
-    info_display_version: "0.1.1-1"
+    info_display_version: "0.1.2"
     info_display_arch: "arm64"
+    github_repo: "3vilM33pl3/homelab"
+    package_filename: "info-display_0.1.2_arm64.deb"
+  when: inventory_hostname in ['white', 'orange', 'pink']
   tags: always
 
-- name: Upload info-display debian package
-  copy:
-    src: "packages/{{ info_display_package }}_{{ info_display_version }}_{{ info_display_arch }}.deb"
-    dest: "/tmp/{{ info_display_package }}_{{ info_display_version }}_{{ info_display_arch }}.deb"
+- name: Get latest release info from GitHub
+  uri:
+    url: "https://api.github.com/repos/{{ github_repo }}/releases/latest"
+    method: GET
+    return_content: yes
+  register: github_release
+  delegate_to: localhost
+  run_once: true
+  tags: always
+
+- name: Extract download URL for the debian package
+  set_fact:
+    package_download_url: "{{ github_release.json.assets | selectattr('name', 'match', '.*\\.deb$') | map(attribute='browser_download_url') | first }}"
+  when: inventory_hostname in ['white', 'orange', 'pink']
+  tags: always
+
+- name: Download info-display debian package from GitHub
+  get_url:
+    url: "{{ package_download_url }}"
+    dest: "/tmp/{{ package_filename }}"
     mode: '0644'
+    timeout: 30
+  when: inventory_hostname in ['white', 'orange', 'pink']
   tags: always
 
 - name: Install info-display package
   apt:
-    deb: "/tmp/{{ info_display_package }}_{{ info_display_version }}_{{ info_display_arch }}.deb"
+    deb: "/tmp/{{ package_filename }}"
     state: present
+  when: inventory_hostname in ['white', 'orange', 'pink']
   tags: always
 
 - name: Clean up temporary package file
   file:
-    path: "/tmp/{{ info_display_package }}_{{ info_display_version }}_{{ info_display_arch }}.deb"
+    path: "/tmp/{{ package_filename }}"
     state: absent
+  when: inventory_hostname in ['white', 'orange', 'pink']
   tags: always
 
 - name: Add cron job to run info-display every 5 minutes
   cron:
-    name: "Run {{ info_display_package }}"
+    name: "Run info_display"
     minute: "*/5"
-    job: "/usr/bin/{{ info_display_package }}"
+    job: "/usr/bin/info_display"
     user: root
+  when: inventory_hostname in ['white', 'orange', 'pink']
   tags: always
