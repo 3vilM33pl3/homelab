@@ -85,13 +85,26 @@ jobs:
         cd raspi-info-display
         cargo build --release --target aarch64-unknown-linux-gnu
         
+    - name: Create temporary Cargo.toml with fixed dependencies
+      run: |
+        cd raspi-info-display
+        # Create a temporary Cargo.toml with manual dependencies for cross-compilation
+        cp Cargo.toml Cargo.toml.backup
+        sed -i 's/depends = "\$auto"/depends = "libc6, libgcc-s1"/' Cargo.toml
+        
     - name: Build Debian package
       run: |
         cd raspi-info-display
         # Copy the ARM64 binary to the expected location for cargo-deb
         mkdir -p target/release
         cp target/aarch64-unknown-linux-gnu/release/info_display target/release/
+        # Build the package with fixed dependencies
         cargo deb --target aarch64-unknown-linux-gnu --no-build
+        
+    - name: Restore original Cargo.toml
+      run: |
+        cd raspi-info-display
+        mv Cargo.toml.backup Cargo.toml
         
     - name: Get package version
       id: version
