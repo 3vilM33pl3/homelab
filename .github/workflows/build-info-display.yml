@@ -26,7 +26,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     
     steps:
     - name: Checkout repository
@@ -36,12 +36,12 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
-        targets: aarch64-unknown-linux-gnu
+        targets: aarch64-unknown-linux-musl
         
     - name: Install cross-compilation dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu pkg-config libudev-dev
+        sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu pkg-config libudev-dev
         
     - name: Install cargo-deb
       run: cargo install cargo-deb
@@ -75,35 +75,35 @@ jobs:
         cd raspi-info-display
         mkdir -p .cargo
         cat > .cargo/config.toml << EOF
-        [target.aarch64-unknown-linux-gnu]
-        linker = "aarch64-linux-gnu-gcc"
+        [target.aarch64-unknown-linux-musl]
+        linker = "rust-lld"
         EOF
         
     - name: Test build (check compilation)
       run: |
         cd raspi-info-display
-        cargo check --target aarch64-unknown-linux-gnu
+        cargo check --target aarch64-unknown-linux-musl
         
     - name: Build release binary
       run: |
         cd raspi-info-display
-        cargo build --release --target aarch64-unknown-linux-gnu
+        cargo build --release --target aarch64-unknown-linux-musl
         
     - name: Create temporary Cargo.toml with fixed dependencies
       run: |
         cd raspi-info-display
-        # Create a temporary Cargo.toml with manual dependencies for cross-compilation
+        # Create a temporary Cargo.toml with minimal dependencies for musl static binary
         cp Cargo.toml Cargo.toml.backup
-        sed -i 's/depends = "\$auto"/depends = "libc6, libgcc-s1"/' Cargo.toml
+        sed -i 's/depends = "\$auto"/depends = ""/' Cargo.toml
         
     - name: Build Debian package
       run: |
         cd raspi-info-display
         # Copy the ARM64 binary to the expected location for cargo-deb
         mkdir -p target/release
-        cp target/aarch64-unknown-linux-gnu/release/info_display target/release/
+        cp target/aarch64-unknown-linux-musl/release/info_display target/release/
         # Build the package with fixed dependencies
-        cargo deb --target aarch64-unknown-linux-gnu --no-build
+        cargo deb --target aarch64-unknown-linux-musl --no-build
         
     - name: Restore original Cargo.toml
       run: |
@@ -128,8 +128,8 @@ jobs:
       with:
         name: info-display-${{ steps.version.outputs.version }}
         path: |
-          raspi-info-display/target/aarch64-unknown-linux-gnu/debian/${{ steps.version.outputs.package_name }}
-          raspi-info-display/target/aarch64-unknown-linux-gnu/release/info_display
+          raspi-info-display/target/debian/${{ steps.version.outputs.package_name }}
+          raspi-info-display/target/aarch64-unknown-linux-musl/release/info_display
         retention-days: 30
         
     - name: Create Release
@@ -169,7 +169,7 @@ jobs:
           - SSD1306 OLED display connected via I2C
           - I2C enabled in raspi-config
         files: |
-          raspi-info-display/target/aarch64-unknown-linux-gnu/debian/${{ steps.version.outputs.package_name }}
+          raspi-info-display/target/debian/${{ steps.version.outputs.package_name }}
         draft: false
         prerelease: false
         generate_release_notes: true
