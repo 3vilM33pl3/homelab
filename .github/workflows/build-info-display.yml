@@ -109,14 +109,14 @@ jobs:
     - name: Rename package with architecture
       run: |
         cd raspi-info-display
-        mv target/debian/info-display_*.deb target/debian/${{ steps.version.outputs.package_name }}
+        mv target/aarch64-unknown-linux-musl/debian/info-display_*.deb target/aarch64-unknown-linux-musl/debian/${{ steps.version.outputs.package_name }}
         
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: info-display-${{ steps.version.outputs.version }}
         path: |
-          raspi-info-display/target/debian/${{ steps.version.outputs.package_name }}
+          raspi-info-display/target/aarch64-unknown-linux-musl/debian/${{ steps.version.outputs.package_name }}
           raspi-info-display/target/aarch64-unknown-linux-musl/release/info_display
         retention-days: 30
         
@@ -157,7 +157,7 @@ jobs:
           - SSD1306 OLED display connected via I2C
           - I2C enabled in raspi-config
         files: |
-          raspi-info-display/target/debian/${{ steps.version.outputs.package_name }}
+          raspi-info-display/target/aarch64-unknown-linux-musl/debian/${{ steps.version.outputs.package_name }}
         draft: false
         prerelease: false
         generate_release_notes: true
