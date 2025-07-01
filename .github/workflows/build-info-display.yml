@@ -90,8 +90,8 @@ jobs:
         # Copy the ARM64 binary to the expected location for cargo-deb
         mkdir -p target/release
         cp target/aarch64-unknown-linux-musl/release/info_display target/release/
-        # Build the package with fixed dependencies
-        cargo deb --target aarch64-unknown-linux-musl --no-build
+        # Build the package with fixed dependencies and no stripping
+        cargo deb --target aarch64-unknown-linux-musl --no-build --no-strip
         
     - name: Restore original Cargo.toml
       run: |
@@ -109,7 +109,7 @@ jobs:
     - name: Rename package with architecture
       run: |
         cd raspi-info-display
-        mv target/aarch64-unknown-linux-gnu/debian/info-display_*.deb target/aarch64-unknown-linux-gnu/debian/${{ steps.version.outputs.package_name }}
+        mv target/debian/info-display_*.deb target/debian/${{ steps.version.outputs.package_name }}
         
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
