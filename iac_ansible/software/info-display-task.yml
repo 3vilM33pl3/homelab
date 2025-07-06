@@ -2,10 +2,10 @@
 - name: Set info-display package variables
   set_fact:
     info_display_package: "info-display"
-    info_display_version: "0.1.2"
+    info_display_version: "1.0.0"
     info_display_arch: "arm64"
     github_repo: "3vilM33pl3/homelab"
-    package_filename: "info-display_0.1.2_arm64.deb"
+    package_filename: "info-display_1.0.0-1_arm64.deb"
   when: inventory_hostname in ['white', 'orange', 'pink']
   tags: always
 
@@ -54,6 +54,35 @@
     - not release_exists
   tags: always
 
+- name: Check if info-display package is installed
+  command: dpkg -l {{ info_display_package }}
+  register: package_check
+  failed_when: false
+  changed_when: false
+  when: inventory_hostname in ['white', 'orange', 'pink']
+  tags: always
+
+- name: Stop and disable info-display service if installed
+  systemd:
+    name: info-display.service
+    state: stopped
+    enabled: no
+  when: 
+    - inventory_hostname in ['white', 'orange', 'pink']
+    - package_check.rc == 0
+  failed_when: false
+  tags: always
+
+- name: Uninstall info-display package if already installed
+  apt:
+    name: "{{ info_display_package }}"
+    state: absent
+    purge: yes
+  when: 
+    - inventory_hostname in ['white', 'orange', 'pink']
+    - package_check.rc == 0
+  tags: always
+
 - name: Install info-display package
   apt:
     deb: "/tmp/{{ package_filename }}"
@@ -61,6 +90,24 @@
   when: 
     - inventory_hostname in ['white', 'orange', 'pink']
     - release_exists
+  tags: always
+
+- name: Get installed version of info-display package
+  shell: dpkg -l {{ info_display_package }} | grep '^ii' | awk '{print $3}'
+  register: installed_version
+  when: 
+    - inventory_hostname in ['white', 'orange', 'pink']
+    - release_exists
+  changed_when: false
+  tags: always
+
+- name: Display installed version of info-display package
+  debug:
+    msg: "info-display package version {{ installed_version.stdout }} installed on {{ inventory_hostname }}"
+  when: 
+    - inventory_hostname in ['white', 'orange', 'pink']
+    - release_exists
+    - installed_version.stdout is defined
   tags: always
 
 - name: Clean up temporary package file
