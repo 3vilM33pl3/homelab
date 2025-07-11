@@ -6,7 +6,7 @@
     info_display_arch: "arm64"
     github_repo: "3vilM33pl3/homelab"
     package_filename: "info-display_1.0.0-1_arm64.deb"
-  when: inventory_hostname in ['white', 'orange', 'pink']
+  when: inventory_hostname in ['white', 'orange', 'pink', 'ca']
   tags: always
 
 - name: Get latest release info from GitHub
