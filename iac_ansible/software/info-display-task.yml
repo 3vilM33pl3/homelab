@@ -31,7 +31,7 @@
   set_fact:
     package_download_url: "{{ github_release.json.assets | selectattr('name', 'match', '.*\\.deb$') | map(attribute='browser_download_url') | first }}"
   when: 
-    - inventory_hostname in ['white', 'orange', 'pink']
+    - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
   tags: always
 
@@ -42,7 +42,7 @@
     mode: '0644'
     timeout: 30
   when: 
-    - inventory_hostname in ['white', 'orange', 'pink']
+    - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
   tags: always
 
@@ -50,7 +50,7 @@
   debug:
     msg: "No GitHub releases found for {{ github_repo }}. Skipping info-display installation."
   when: 
-    - inventory_hostname in ['white', 'orange', 'pink']
+    - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - not release_exists
   tags: always
 
@@ -60,7 +60,7 @@
     deb: "/tmp/{{ package_filename }}"
     state: present
   when: 
-    - inventory_hostname in ['white', 'orange', 'pink']
+    - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
   tags: always
 
@@ -69,7 +69,7 @@
     path: "/tmp/{{ package_filename }}"
     state: absent
   when: 
-    - inventory_hostname in ['white', 'orange', 'pink']
+    - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
   tags: always
 
@@ -80,6 +80,6 @@
     state: started
     daemon_reload: yes
   when: 
-    - inventory_hostname in ['white', 'orange', 'pink']
+    - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
   tags: always
