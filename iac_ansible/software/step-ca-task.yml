@@ -1,0 +1,5 @@
+---
+- name: Install step-ca
+  apt:
+    name: step-ca
+    state: present

@@ -1,6 +1,0 @@
-- hosts: ca
-  gather_facts: no
-  become: yes
-  become_method: doas
-  vars:
-    ansible_user: olivier
