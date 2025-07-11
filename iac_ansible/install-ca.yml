@@ -41,3 +41,5 @@
   - include_tasks: software/info-display-task.yml
     tags: always
   
+  - include_tasks: software/infnoise-task.yml
+    tags: always

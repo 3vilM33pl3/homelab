@@ -1,0 +1,11 @@
+---
+- name: Install Infnoise package
+  apt:
+    name: infnoise
+    state: present
+
+- name: Enable and start Infnoise service
+  service:
+    name: infnoise
+    enabled: yes
+    state: started
