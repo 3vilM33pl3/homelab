@@ -77,6 +77,23 @@ ansible-playbook -i inventory-homelab.ini software-install.yml --tags "apt-upgra
 ansible-playbook -i ca/inventory-ca.ini install-ca.yml
 ```
 
+### Infnoise True Random Number Generator (TRNG)
+
+The Certificate Authority server uses an Infnoise TRNG hardware device to enhance cryptographic security. This provides:
+
+- **Hardware entropy source**: True random numbers from thermal noise
+- **Enhanced key generation**: Improved randomness for certificate private keys
+- **FIPS compliance**: Meets requirements for high-security environments
+- **Continuous operation**: Feeds entropy to the system's random pool
+
+The Infnoise device is automatically configured during CA setup via the `software/infnoise-task.yml` playbook, which:
+- Installs necessary drivers and software
+- Configures the device for automatic startup
+- Integrates with the system's entropy pool
+- Ensures proper permissions for the step-ca service
+
+This hardware RNG is particularly important for the CA server as it generates root certificates and signs all other certificates in the infrastructure.
+
 ## Inventory Files
 
 ### inventory-homelab.ini
