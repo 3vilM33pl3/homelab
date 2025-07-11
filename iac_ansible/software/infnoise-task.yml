@@ -9,3 +9,19 @@
     name: infnoise
     enabled: yes
     state: started
+
+- name: Check if Infnoise device is present
+  command: infnoise -l
+  register: infnoise_check
+  failed_when: false
+  changed_when: false
+
+- name: Display Infnoise device status
+  debug:
+    msg: "{{ infnoise_check.stdout }}"
+  when: infnoise_check.rc == 0
+
+- name: Warn if no Infnoise device found
+  debug:
+    msg: "WARNING: No Infnoise device detected. Check USB connection."
+  when: infnoise_check.rc != 0
