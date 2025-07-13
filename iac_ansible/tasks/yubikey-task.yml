@@ -19,23 +19,6 @@
     daemon_reload: yes
   tags: always
 
-- name: Copy YubiKey udev rules
-  copy:
-    src: files/75-yubikey.rules
-    dest: /etc/udev/rules.d/75-yubikey.rules
-    owner: root
-    group: root
-    mode: '0644'
-  tags: always
-
-- name: Reload udev rules
-  command: udevadm control --reload-rules
-  tags: always
-
-- name: Trigger udev rules
-  command: udevadm trigger
-  tags: always
-
 - name: Copy step-ca systemd service
   copy:
     src: files/step-ca.service
@@ -50,18 +33,3 @@
     daemon_reload: yes
   tags: always
 
-- name: Create YubiKey device wants directory
-  file:
-    path: /etc/systemd/system/dev-yubikey.device.wants
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
-  tags: always
-
-- name: Create symlink for step-ca service in YubiKey device wants
-  file:
-    src: /etc/systemd/system/step-ca.service
-    dest: /etc/systemd/system/dev-yubikey.device.wants/step-ca.service
-    state: link
-  tags: always

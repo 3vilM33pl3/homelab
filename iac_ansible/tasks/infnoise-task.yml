@@ -4,6 +4,23 @@
     name: infnoise
     state: present
 
+- name: Copy correct Infnoise udev rules
+  copy:
+    src: files/60-infnoise.rules
+    dest: /lib/udev/rules.d/60-infnoise.rules
+    owner: root
+    group: root
+    mode: '0644'
+  tags: always
+
+- name: Reload udev rules
+  command: udevadm control --reload-rules
+  tags: always
+
+- name: Trigger udev rules
+  command: udevadm trigger
+  tags: always
+
 - name: Check if Infnoise service is running
   command: systemctl is-active infnoise
   register: infnoise_status
