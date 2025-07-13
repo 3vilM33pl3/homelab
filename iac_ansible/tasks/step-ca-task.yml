@@ -3,3 +3,17 @@
   apt:
     name: step-ca
     state: present
+
+- name: Copy step-ca systemd service
+  copy:
+    src: files/step-ca.service
+    dest: /etc/systemd/system/step-ca.service
+    owner: root
+    group: root
+    mode: '0644'
+  tags: always
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  tags: always
