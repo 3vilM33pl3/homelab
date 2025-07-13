@@ -14,32 +14,32 @@
       name: UTC
     tags: always
 
-  - include_tasks: software/apt-upgrade-tasks.yml
+  - include_tasks: tasks/apt-upgrade-tasks.yml
     tags: always
 
-  - include_tasks: software/vim-task.yml
+  - include_tasks: tasks/vim-task.yml
     tags: always
 
-  - include_tasks: software/yubikey-task.yml
+  - include_tasks: tasks/yubikey-task.yml
     tags: always
 
-  - include_tasks: software/step-cli-task.yml
+  - include_tasks: tasks/step-cli-task.yml
     tags: always
 
-  - include_tasks: software/step-ca-task.yml
+  - include_tasks: tasks/step-ca-task.yml
     tags: always
 
-  - include_tasks: software/tools-task.yml
+  - include_tasks: tasks/tools-task.yml
     tags: always
 
-  - include_tasks: software/ntp-task.yml
+  - include_tasks: tasks/ntp-task.yml
     tags: always
 
-  - include_tasks: software/i2c-task.yml
+  - include_tasks: tasks/i2c-task.yml
     tags: always
 
-  - include_tasks: software/info-display-task.yml
+  - include_tasks: tasks/info-display-task.yml
     tags: always
   
-  - include_tasks: software/infnoise-task.yml
+  - include_tasks: tasks/infnoise-task.yml
     tags: always

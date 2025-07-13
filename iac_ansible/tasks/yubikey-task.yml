@@ -1,0 +1,22 @@
+---
+- name: Install Yubikey tools
+  apt:
+    name: yubikey-manager
+    state: present
+  tags: always
+
+- name: Install Yubikey PIV tools
+  apt:
+    name: yubico-piv-tool 
+    state: present
+  tags: always
+
+- name: Enable pcscd service
+  systemd:
+    name: pcscd.service
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  tags: always
+
+

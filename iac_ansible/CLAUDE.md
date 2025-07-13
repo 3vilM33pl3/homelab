@@ -13,7 +13,7 @@ The repository is organized into several main components:
 - **Inventory**: `inventory-homelab.ini` defines three hosts (white, pink, orange) with Python 3.11 interpreters
 - **Cluster Management**: `cluster/` directory contains K3s server and agent installation playbooks
 - **Configuration**: `config/` directory handles system configuration tasks like cgroups and SSH keys
-- **Software Installation**: `software/` directory contains modular task files for installing various tools
+- **Software Installation**: `tasks/` directory contains modular task files for installing various tools
 
 ## Key Components
 
@@ -27,7 +27,7 @@ The repository is organized into several main components:
 - `config/enable-cgroups.yml`: Enables cgroups required for container runtime
 
 ### Modular Tasks
-All software installation is broken into individual task files in `software/` directory, making it easy to add or remove components.
+All software installation is broken into individual task files in `tasks/` directory, making it easy to add or remove components.
 
 ## Common Commands
 
@@ -60,7 +60,7 @@ ansible-playbook -i inventory-homelab.ini cluster/uninstall/k3-uninstall-server.
 
 ## Development Workflow
 
-1. **Adding New Software**: Create a new task file in `software/` directory and include it in `software-install.yml`
+1. **Adding New Software**: Create a new task file in `tasks/` directory and include it in `software-install.yml`
 2. **Cluster Changes**: Modify files in `cluster/` directory for K3s-related changes
 3. **Configuration Updates**: Add system configuration tasks to `config/` directory
 4. **Testing**: Run playbooks against the homelab inventory to test changes

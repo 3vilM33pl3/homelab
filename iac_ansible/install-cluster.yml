@@ -4,38 +4,38 @@
   vars:
     ansible_user: olivier
   tasks:
-  - include_tasks: software/apt-upgrade-tasks.yml
+  - include_tasks: tasks/apt-upgrade-tasks.yml
     tags: always
 
-  - include_tasks: software/vim-task.yml
+  - include_tasks: tasks/vim-task.yml
     tags: always
 
-  - include_tasks: software/rust-task.yml
+  - include_tasks: tasks/rust-task.yml
     tags: always
 
-  - include_tasks: software/rust-cargo-task.yml
+  - include_tasks: tasks/rust-cargo-task.yml
     tags: always
 
-  - include_tasks: software/helm-task.yml
+  - include_tasks: tasks/helm-task.yml
     tags: always
 
-  - include_tasks: software/i2c-task.yml
+  - include_tasks: tasks/i2c-task.yml
     tags: always
 
-  - include_tasks: software/yubikey-task.yml
+  - include_tasks: tasks/yubikey-task.yml
     tags: always
 
-  - include_tasks: software/step-cli-task.yml
+  - include_tasks: tasks/step-cli-task.yml
     tags: always
 
-  - include_tasks: software/tools-task.yml
+  - include_tasks: tasks/tools-task.yml
     tags: always
 
-  - include_tasks: software/certbot-task.yml
+  - include_tasks: tasks/certbot-task.yml
     tags: always
 
-  - include_tasks: software/info-display-task.yml
+  - include_tasks: tasks/info-display-task.yml
     tags: always
 
-  - include_tasks: software/longhorn-prep-task.yml
+  - include_tasks: tasks/longhorn-prep-task.yml
     tags: always

@@ -15,7 +15,7 @@ iac_ansible/
 ├── config/                  # System configuration playbooks
 │   ├── enable-cgroups.yml  # Enable cgroups for K3s
 │   └── ssh-key-auth.yml    # Setup SSH key authentication
-├── software/               # Individual software installation tasks
+├── tasks/                  # Individual software installation tasks
 │   ├── apt-upgrade-tasks.yml
 │   ├── vim-task.yml
 │   ├── yubikey-task.yml
@@ -86,7 +86,7 @@ The Certificate Authority server uses an Infnoise TRNG hardware device to enhanc
 - **FIPS compliance**: Meets requirements for high-security environments
 - **Continuous operation**: Feeds entropy to the system's random pool
 
-The Infnoise device is automatically configured during CA setup via the `software/infnoise-task.yml` playbook, which:
+The Infnoise device is automatically configured during CA setup via the `tasks/infnoise-task.yml` playbook, which:
 - Installs necessary drivers and software
 - Configures the device for automatic startup
 - Integrates with the system's entropy pool
@@ -115,7 +115,7 @@ Defines the Certificate Authority server host.
 
 ## Adding New Software
 
-1. Create a new task file in `software/` directory
+1. Create a new task file in `tasks/` directory
 2. Include the task file in `software-install.yml` or `install-ca.yml`
 3. Use appropriate tags for conditional execution
 
