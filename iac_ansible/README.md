@@ -91,6 +91,9 @@ The Infnoise device is automatically configured during CA setup via the `tasks/i
 - Configures the device for automatic startup
 - Integrates with the system's entropy pool
 - Ensures proper permissions for the step-ca service
+- **Important**: Replaces the incorrect default udev rules that come with the package
+
+**Note on udev rules**: The default udev rules installed by the infnoise package are incorrect and must be replaced for proper device operation. The corrected rules ensure the device has appropriate permissions and is accessible by the infnoise service.
 
 This hardware RNG is particularly important for the CA server as it generates root certificates and signs all other certificates in the infrastructure.
 
@@ -111,7 +114,6 @@ Defines the Certificate Authority server host.
 - All hosts use Python 3.11 as the interpreter
 - The `k3s-agent-config` file is automatically generated during server setup
 - Software tasks use the "always" tag for consistent execution
-- CA server runs on Alpine Linux and uses `doas` for privilege escalation
 
 ## Adding New Software
 
