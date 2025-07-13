@@ -4,11 +4,18 @@
     name: infnoise
     state: present
 
-- name: Enable and start Infnoise service
+- name: Check if Infnoise service is running
+  command: systemctl is-active infnoise
+  register: infnoise_status
+  failed_when: false
+  changed_when: false
+
+- name: Enable and start Infnoise service (if not already running)
   service:
     name: infnoise
     enabled: yes
     state: started
+  when: infnoise_status.stdout != "active"
 
 - name: Check if Infnoise device is present
   command: infnoise -l
