@@ -25,17 +25,9 @@ const cilium = new kubernetes.helm.v3.Release("cilium", {
             },
             ui: {
                 enabled: true,
+                // Ingress disabled - can be added separately with nginx-ingress if needed
                 ingress: {
-                    enabled: true,
-                    hosts: ["hubble.metatao.net"],
-                    annotations: {
-                        "kubernetes.io/ingress.class": "cilium",
-                        // "cert-manager.io/cluster-issuer": "metatao-acme-issuer", // Enable after ClusterIssuer is created
-                    },
-                    // tls: [{
-                    //     secretName: "hubble-tls-cert",
-                    //     hosts: ["hubble.metatao.net"],
-                    // }], // Enable after ClusterIssuer is created
+                    enabled: false,
                 },
             },
         },
@@ -51,14 +43,9 @@ const cilium = new kubernetes.helm.v3.Release("cilium", {
             },
         },
         
-        // Enable Cilium Ingress Controller (proper config for v1.14.5)
+        // Disable Cilium Ingress Controller (using nginx-ingress instead)
         ingressController: {
-            enabled: true,
-            loadbalancerMode: "dedicated",
-            service: {
-                type: "LoadBalancer",
-            },
-            default: true,
+            enabled: false,
         },
         
         // Enable L7 proxy for ingress

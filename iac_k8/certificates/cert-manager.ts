@@ -28,7 +28,7 @@ const acmeClusterIssuer = new kubernetes.apiextensions.CustomResource("acme-issu
     },
     spec: {
         acme: {
-            server: "https://10.22.6.2/acme/acme/directory",
+            server: "https://ca.metatao.net/acme/acme/directory",
             email: "admin@metatao.net",
             skipTLSVerify: true,
             privateKeySecretRef: {
@@ -38,7 +38,7 @@ const acmeClusterIssuer = new kubernetes.apiextensions.CustomResource("acme-issu
                 {
                     http01: {
                         ingress: {
-                            class: "cilium",
+                            class: "nginx",
                         },
                     },
                 },

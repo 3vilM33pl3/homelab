@@ -18,8 +18,11 @@ This is a multi-component homelab infrastructure repository containing:
 
 ### Kubernetes Deployment (iac_k8/)
 - **Stack**: Pulumi with TypeScript for K8s resource management
-- **CNI**: Cilium for advanced networking with Hubble observability
-- **Resources**: Nginx ingress controller and sample nginx deployment with LoadBalancer service
+- **CNI**: Cilium for advanced networking with Hubble observability and native routing
+- **Ingress**: nginx-ingress-controller for HTTP/HTTPS routing and TLS termination
+- **Storage**: Longhorn distributed storage with web UI and multiple storage classes
+- **Certificates**: cert-manager with custom ACME integration for automatic TLS certificates
+- **Applications**: Kubernetes Dashboard with automatic HTTPS certificate from custom CA
 
 ### Raspberry Pi Display (raspi-info-display/)
 - **Language**: Rust application using embedded-hal for OLED display
@@ -40,8 +43,11 @@ ansible-playbook -i iac_ansible/inventory-homelab.ini iac_ansible/config/enable-
 ansible-playbook -i iac_ansible/inventory-homelab.ini iac_ansible/cluster/k3s-server.yml
 ansible-playbook -i iac_ansible/inventory-homelab.ini iac_ansible/cluster/k3s-agent.yml
 
-# Deploy CNI and infrastructure (run after K3s cluster is ready)
+# Deploy Kubernetes infrastructure (run after K3s cluster is ready)
 cd iac_k8 && pulumi up
+
+# Validate deployment
+cd iac_k8 && ./validate-deployment.sh
 
 # Install all software packages
 ansible-playbook -i iac_ansible/inventory-homelab.ini iac_ansible/software-install.yml
@@ -69,7 +75,8 @@ ansible-playbook -i iac_ansible/inventory-homelab.ini iac_ansible/software-insta
 # Deploy Cilium CNI and Longhorn storage system
 cd iac_k8 && pulumi up
 
-# Access UIs (after deployment, requires DNS or /etc/hosts entries)
+# Access UIs (after deployment, requires DNS entries pointing to nginx-ingress LoadBalancer IP)
+# Kubernetes Dashboard: https://dashboard.metatao.net (automatic HTTPS certificate)
 # Longhorn UI: http://longhorn.metatao.net (admin / longhorn)
 # Hubble UI: http://hubble.metatao.net (network observability)
 ```
