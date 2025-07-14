@@ -19,11 +19,7 @@ const certManager = new kubernetes.helm.v3.Release("cert-manager", {
     version: "v1.13.3",
 });
 
-// Note: ClusterIssuer will be created manually after cert-manager is ready
-// This avoids timing issues with webhooks during initial deployment
-
-// Uncomment and deploy separately after cert-manager is running:
-/*
+// ClusterIssuer for custom Certificate Authority
 const acmeClusterIssuer = new kubernetes.apiextensions.CustomResource("acme-issuer", {
     apiVersion: "cert-manager.io/v1",
     kind: "ClusterIssuer",
@@ -32,8 +28,9 @@ const acmeClusterIssuer = new kubernetes.apiextensions.CustomResource("acme-issu
     },
     spec: {
         acme: {
-            server: "https://ca.metatao.net/acme/acme/directory",
+            server: "https://10.22.6.2/acme/acme/directory",
             email: "admin@metatao.net",
+            skipTLSVerify: true,
             privateKeySecretRef: {
                 name: "metatao-acme-private-key",
             },
@@ -41,7 +38,7 @@ const acmeClusterIssuer = new kubernetes.apiextensions.CustomResource("acme-issu
                 {
                     http01: {
                         ingress: {
-                            class: "nginx",
+                            class: "cilium",
                         },
                     },
                 },
@@ -49,8 +46,7 @@ const acmeClusterIssuer = new kubernetes.apiextensions.CustomResource("acme-issu
         },
     },
 }, { dependsOn: certManager });
-*/
 
 // Export cert-manager information
 export const certManagerReleaseName = certManager.name;
-// export const acmeIssuerName = acmeClusterIssuer.metadata.name; // Uncomment when ClusterIssuer is enabled
+export const acmeIssuerName = acmeClusterIssuer.metadata.name;

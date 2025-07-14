@@ -95,6 +95,28 @@ const cilium = new kubernetes.helm.v3.Release("cilium", {
         autoDirectNodeRoutes: true,
         ipv4NativeRoutingCIDR: "10.22.6.0/24", // Your node network CIDR
         
+        // Configure tunneling to ensure connectivity
+        tunnelMode: "disabled", // Use native routing instead of tunneling
+        
+        // Enable host routing for external network access
+        enableHostLegacyRouting: false,
+        installNoConntrackIptablesRules: false,
+        
+        // Configure masquerading for host network access
+        masquerade: true,
+        enableIPv4Masquerade: true,
+        ipv4MasqueradeInterfaces: "eth0",
+        
+        // Ensure proper routing to host network
+        enableHostReachableServices: true,
+        hostServices: {
+            enabled: true,
+            protocols: "tcp,udp",
+        },
+        
+        // Enable external services to be reachable
+        enableExternalIPs: true,
+        
         // Security settings
         encryption: {
             enabled: false, // Can enable for enhanced security if needed
