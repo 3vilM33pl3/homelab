@@ -13,7 +13,25 @@
     mode: '0644'
   tags: always
 
+- name: Copy step-ca binary with yubikey support
+  copy:
+    src: files/step-ca
+    dest: /usr/local/bin/step-ca
+    owner: root
+    group: root
+    mode: '0755'
+  tags: always
+
+- name: Set capability for step-ca to bind to privileged ports
+  capabilities:
+    path: /usr/local/bin/step-ca
+    capability: cap_net_bind_service+eip
+    state: present
+  tags: always
+
 - name: Reload systemd daemon
   systemd:
     daemon_reload: yes
   tags: always
+  
+  

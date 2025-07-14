@@ -1,11 +1,9 @@
 [Unit]
 Description=step-ca
-BindsTo=dev-yubikey.device
-After=dev-yubikey.device
 [Service]
 User=step
 Group=step
-ExecStart=/bin/sh -c '/usr/bin/step-ca /etc/step-ca/config/ca.json'
+ExecStart=/bin/sh -c '/usr/local/bin/step-ca /etc/step-ca/config/ca.json'
 Type=simple
 Restart=on-failure
 RestartSec=10
