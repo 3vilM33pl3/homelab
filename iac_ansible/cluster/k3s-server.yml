@@ -1,42 +1,37 @@
 ---
-- name: Install K3s Server
-  hosts: white
-  become: yes
-  tasks:
+  - name: Download K3s installation script
+    get_url:
+      url: https://get.k3s.io
+      dest: /tmp/k3s-install.sh
+      mode: '0755'
 
-    - name: Download K3s installation script
-      get_url:
-        url: https://get.k3s.io
-        dest: /tmp/k3s-install.sh
-        mode: '0755'
+  - name: Install K3s Server
+    shell: /tmp/k3s-install.sh server --disable traefik --flannel-backend=none --disable-network-policy
+    args:
+      creates: /usr/local/bin/k3s
 
-    - name: Install K3s Server
-      shell: /tmp/k3s-install.sh server --disable traefik --flannel-backend=none --disable-network-policy
-      args:
-        creates: /usr/local/bin/k3s
+  - name: Wait for K3s to be ready
+    shell: k3s kubectl get nodes
+    register: k3s_ready
+    retries: 30
+    delay: 10
+    until: k3s_ready.rc == 0
 
-    - name: Wait for K3s to be ready
-      shell: k3s kubectl get nodes
-      register: k3s_ready
-      retries: 30
-      delay: 10
-      until: k3s_ready.rc == 0
+  - name: Get K3s node token
+    shell: cat /var/lib/rancher/k3s/server/node-token
+    register: k3s_token
+    no_log: true
 
-    - name: Get K3s node token
-      shell: cat /var/lib/rancher/k3s/server/node-token
-      register: k3s_token
-      no_log: true
+  - name: Get server IP
+    shell: hostname -I | awk '{print $1}'
+    register: server_ip
 
-    - name: Get server IP
-      shell: hostname -I | awk '{print $1}'
-      register: server_ip
-
-    - name: Create agent config file
-      become: no
-      copy:
-        content: |
-          server: https://{{ server_ip.stdout }}:6443
-          token: {{ k3s_token.stdout }}
-        dest: ../k3s-agent-config
-        mode: '0644'
-      delegate_to: localhost 
+  - name: Create agent config file
+    become: no
+    copy:
+      content: |
+        server: https://{{ server_ip.stdout }}:6443
+        token: {{ k3s_token.stdout }}
+      dest: ../k3s-agent-config
+      mode: '0644'
+    delegate_to: localhost 

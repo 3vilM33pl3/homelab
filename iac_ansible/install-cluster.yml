@@ -4,38 +4,18 @@
   vars:
     ansible_user: olivier
   tasks:
-  - include_tasks: tasks/apt-upgrade-tasks.yml
-    tags: always
+    - name: install cluster
+      include_tasks: cluster/k3s-server.yml
+      tags: always
+      when: inventory_hostname == 'white'
 
-  - include_tasks: tasks/vim-task.yml
-    tags: always
+    - name: install agent
+      include_tasks: cluster/k3s-agent.yml
+      tags: always
+      when: inventory_hostname == 'orange' or inventory_hostname == 'pink'
 
-  - include_tasks: tasks/rust-task.yml
-    tags: always
+    - name: install k3s dashboard
+      include_tasks: cluster/k3s-dashboard.yml
+      tags: always
+      when: inventory_hostname == 'white'
 
-  - include_tasks: tasks/rust-cargo-task.yml
-    tags: always
-
-  - include_tasks: tasks/helm-task.yml
-    tags: always
-
-  - include_tasks: tasks/i2c-task.yml
-    tags: always
-
-  - include_tasks: tasks/yubikey-task.yml
-    tags: always
-
-  - include_tasks: tasks/step-cli-task.yml
-    tags: always
-
-  - include_tasks: tasks/tools-task.yml
-    tags: always
-
-  - include_tasks: tasks/certbot-task.yml
-    tags: always
-
-  - include_tasks: tasks/info-display-task.yml
-    tags: always
-
-  - include_tasks: tasks/longhorn-prep-task.yml
-    tags: always

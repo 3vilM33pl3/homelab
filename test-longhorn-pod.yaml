@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: longhorn-test-pod
+spec:
+  containers:
+  - name: test-container
+    image: nginx:alpine
+    volumeMounts:
+    - name: longhorn-volume
+      mountPath: /data
+    command: ["/bin/sh"]
+    args: ["-c", "while true; do echo $(date) >> /data/test.log; sleep 60; done"]
+  volumes:
+  - name: longhorn-volume
+    persistentVolumeClaim:
+      claimName: longhorn-test-pvc
