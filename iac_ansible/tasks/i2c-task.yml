@@ -1,7 +1,11 @@
 ---
+# I2C Configuration for Raspberry Pi
+# Supports both direct I2C connections and TCA9548A multiplexer
 - name: Install I2C tools
   apt:
-    name: i2c-tools
+    name: 
+      - i2c-tools
+      - python3-smbus
     state: present
   tags: always
 
@@ -33,3 +37,14 @@
     name: "{{ ansible_user | default('pi') }}"
     groups: i2c
     append: yes
+
+- name: Check for TCA9548A I2C multiplexer (optional)
+  become: yes
+  shell: i2cdetect -y 1 0x70 0x70 | grep -q "70" && echo "TCA9548A detected at 0x70" || echo "No TCA9548A found"
+  register: multiplexer_check
+  changed_when: false
+  failed_when: false
+
+- name: Display TCA9548A detection result
+  debug:
+    msg: "{{ multiplexer_check.stdout }}"

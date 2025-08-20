@@ -1,3 +1,5 @@
+mod tca9548a;
+
 use embedded_graphics::{
     mono_font::{ascii::FONT_6X10, iso_8859_9::FONT_7X14_BOLD, MonoTextStyle},
     pixelcolor::BinaryColor,
@@ -13,7 +15,9 @@ use std::fs;
 use std::env;
 use std::thread;
 use std::time::Duration;
+use std::sync::{Arc, Mutex};
 use daemonize::Daemonize;
+use tca9548a::Tca9548a;
 
 fn get_ip_address() -> Result<String> {
     // Get all network interfaces
@@ -107,11 +111,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut interval_seconds = 5; // Default to 5 seconds
     let mut clear_only = false;
     let mut daemon_mode = false;
+    let mut use_multiplexer = false;
+    let mut mux_channel = 0u8;
+    let mut mux_address = 0x70u8;
     
     for i in 1..args.len() {
         match args[i].as_str() {
             "--clear" => clear_only = true,
             "--daemon" | "-d" => daemon_mode = true,
+            "--mux" => use_multiplexer = true,
+            "--mux-channel" => {
+                if i + 1 < args.len() {
+                    if let Ok(channel) = args[i + 1].parse::<u8>() {
+                        if channel <= 7 {
+                            mux_channel = channel;
+                            use_multiplexer = true;
+                        }
+                    }
+                }
+            }
+            "--mux-address" => {
+                if i + 1 < args.len() {
+                    if let Ok(addr) = u8::from_str_radix(args[i + 1].trim_start_matches("0x"), 16) {
+                        mux_address = addr;
+                    }
+                }
+            }
             "--interval" | "-i" => {
                 if i + 1 < args.len() {
                     if let Ok(seconds) = args[i + 1].parse::<u64>() {
@@ -125,6 +150,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         interval_seconds = seconds;
                     }
                 }
+            }
+            arg if arg.starts_with("--mux-channel=") => {
+                if let Some(value) = arg.strip_prefix("--mux-channel=") {
+                    if let Ok(channel) = value.parse::<u8>() {
+                        if channel <= 7 {
+                            mux_channel = channel;
+                            use_multiplexer = true;
+                        }
+                    }
+                }
+            }
+            "--help" | "-h" => {
+                println!("Usage: {} [OPTIONS]", args[0]);
+                println!("\nOptions:");
+                println!("  --clear               Clear the display and exit");
+                println!("  --daemon, -d          Run in daemon mode");
+                println!("  --interval=<seconds>  Set update interval (default: 5)");
+                println!("  --mux                 Use TCA9548A I2C multiplexer");
+                println!("  --mux-channel=<0-7>   Select multiplexer channel (default: 0)");
+                println!("  --mux-address=<addr>  Set multiplexer I2C address (default: 0x70)");
+                println!("  --help, -h            Show this help message");
+                return Ok(());
             }
             _ => {}
         }
@@ -148,35 +195,82 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Handle clear-only mode
     if clear_only {
+        if use_multiplexer {
+            // Setup multiplexer and select channel
+            let i2c = Arc::new(Mutex::new(I2cdev::new("/dev/i2c-1")?));
+            let mut mux = Tca9548a::with_address(Arc::clone(&i2c), mux_address);
+            mux.select_channel(mux_channel)?;
+            drop(mux);
+            
+            // Now use regular I2C (the channel is already selected)
+            let i2c = I2cdev::new("/dev/i2c-1")?;
+            let interface = I2CDisplayInterface::new(i2c);
+            let mut display = Ssd1306::new(
+                interface,
+                DisplaySize128x64,
+                DisplayRotation::Rotate0,
+            )
+            .into_buffered_graphics_mode();
+            display.init().unwrap();
+            display.clear(BinaryColor::Off).unwrap();
+            display.flush().unwrap();
+        } else {
+            let i2c = I2cdev::new("/dev/i2c-1")?;
+            let interface = I2CDisplayInterface::new(i2c);
+            let mut display = Ssd1306::new(
+                interface,
+                DisplaySize128x64,
+                DisplayRotation::Rotate0,
+            )
+            .into_buffered_graphics_mode();
+            display.init().unwrap();
+            display.clear(BinaryColor::Off).unwrap();
+            display.flush().unwrap();
+        }
+        return Ok(());
+    }
+
+    // Initialize display based on multiplexer usage
+    let (mut display, _mux_handle) = if use_multiplexer {
+        println!("Using TCA9548A multiplexer on address 0x{:02X}, channel {}", mux_address, mux_channel);
+        
+        // Create shared I2C bus and multiplexer
+        let i2c_shared = Arc::new(Mutex::new(I2cdev::new("/dev/i2c-1")?));
+        let mut mux = Tca9548a::with_address(Arc::clone(&i2c_shared), mux_address);
+        mux.select_channel(mux_channel)?;
+        
+        // Store mux in Arc<Mutex> to keep it alive
+        let mux_handle = Arc::new(Mutex::new(mux));
+        
+        // Create a new I2C connection for the display
+        // (the channel is already selected on the multiplexer)
         let i2c = I2cdev::new("/dev/i2c-1")?;
         let interface = I2CDisplayInterface::new(i2c);
+        
         let mut display = Ssd1306::new(
             interface,
             DisplaySize128x64,
             DisplayRotation::Rotate0,
         )
         .into_buffered_graphics_mode();
+        
         display.init().unwrap();
-        display.clear(BinaryColor::Off).unwrap();
-        display.flush().unwrap();
-        return Ok(());
-    }
-
-    // Open I2C bus 1 (adjust to your working bus)
-    let i2c = I2cdev::new("/dev/i2c-1")?;
-
-    // Create the I2C interface for SSD1306
-    let interface = I2CDisplayInterface::new(i2c);
-
-    // Initialize the display in 128x64 resolution, I2C mode
-    let mut display = Ssd1306::new(
-        interface,
-        DisplaySize128x64,
-        DisplayRotation::Rotate0,
-    )
-    .into_buffered_graphics_mode();
-
-    display.init().unwrap();
+        (display, Some(mux_handle))
+    } else {
+        // Standard I2C connection
+        let i2c = I2cdev::new("/dev/i2c-1")?;
+        let interface = I2CDisplayInterface::new(i2c);
+        
+        let mut display = Ssd1306::new(
+            interface,
+            DisplaySize128x64,
+            DisplayRotation::Rotate0,
+        )
+        .into_buffered_graphics_mode();
+        
+        display.init().unwrap();
+        (display, None)
+    };
 
     loop {
         // Clear display
