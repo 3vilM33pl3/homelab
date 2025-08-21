@@ -1,0 +1,3 @@
+[submodule "raspi-info-display"]
+	path = raspi-info-display
+	url = https://github.com/3vilM33pl3/raspi-info-display.git

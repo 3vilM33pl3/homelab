@@ -2,10 +2,10 @@
 - name: Set info-display package variables
   set_fact:
     info_display_package: "info-display"
-    info_display_version: "1.0.0"
+    info_display_version: "1.2.0"
     info_display_arch: "arm64"
     github_repo: "3vilM33pl3/homelab"
-    package_filename: "info-display_1.0.0-1_arm64.deb"
+    package_filename: "info-display_1.2.0-1_arm64.deb"
   when: inventory_hostname in ['white', 'orange', 'pink', 'ca']
   tags: always
 
