@@ -1,4 +1,6 @@
 ---
+# Downloads and installs custom info-display application from GitHub releases
+# for Raspberry Pi OLED display
 - name: Set info-display package variables
   set_fact:
     info_display_package: "info-display"

@@ -1,4 +1,5 @@
 ---
+# Installs and configures Network Time Protocol (NTP) service for time synchronization
 - name: Install NTP package
   apt:
     name: ntp

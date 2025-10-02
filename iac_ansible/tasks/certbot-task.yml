@@ -1,4 +1,6 @@
 ---
+# Installs Certbot SSL certificate management tool and configures it to use
+# custom CA server
 - name: Install Certbot
   package:
     name: certbot

@@ -1,4 +1,7 @@
 ---
+# Installs Smallstep Certificate Authority (step-ca) server with YubiKey support
+# and systemd service configuration
+# For Yubikey support step needs to be compiled with it enabled (disabled by default)
 - name: Install step-ca
   apt:
     name: step-ca

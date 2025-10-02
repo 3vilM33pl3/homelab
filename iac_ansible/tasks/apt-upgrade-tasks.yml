@@ -1,4 +1,6 @@
 ---
+# System package management - updates apt cache, lists upgradeable packages,
+# performs full upgrade, and removes orphaned packages
 
   - name: update
     apt:

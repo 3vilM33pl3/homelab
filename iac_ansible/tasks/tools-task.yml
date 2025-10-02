@@ -1,4 +1,5 @@
 ---
+# Installs essential system administration and networking tools
 - name: Install tools
   apt:
     name: "{{ item }}"

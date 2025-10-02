@@ -1,4 +1,6 @@
 ---
+# Prepares nodes for Longhorn distributed storage system - creates directories,
+# installs dependencies, and validates storage mounts
 - name: Prepare Longhorn storage directories
   tags: always
   block:

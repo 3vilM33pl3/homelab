@@ -1,4 +1,5 @@
 ---
+# Installs Rust programming language via rustup installer with shell completions
 - name: Install Rust via rustup for a specific user
   become: yes
   become_user: "{{ ansible_user }}"

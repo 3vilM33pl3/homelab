@@ -1,10 +1,19 @@
 ---
-- name: Install dust using cargo
+# Installs essential Rust CLI tools via cargo package manager for system
+# administration, monitoring, and Kubernetes cluster management
+- name: Install Rust CLI tools using cargo
   become_user: "{{ ansible_user }}"
   community.general.cargo:
-    name: du-dust
+    name: "{{ item }}"
     locked: true
   environment:
     PATH: "/home/{{ ansible_user }}/.cargo/bin:{{ ansible_env.PATH }}"
+  loop:
+    - du-dust        # Modern disk usage analyzer
+    - bottom         # Modern top replacement with better resource monitoring
+    - ripgrep        # Ultra-fast text search (better than grep)
+    - fd-find        # Modern find replacement
+    - bat            # Cat with syntax highlighting and git integration
+    - bandwhich      # Network bandwidth monitor by process
 
 

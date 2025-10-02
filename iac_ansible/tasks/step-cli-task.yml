@@ -1,4 +1,5 @@
 ---
+# Installs Smallstep CLI tool for certificate management and PKI operations
 - name: Install base dependencies
   apt:
     name:

@@ -1,4 +1,5 @@
 ---
+# Installs Vim text editor and configures it with paste mode enabled by default
 - name: Install vim
   apt:
     name: vim

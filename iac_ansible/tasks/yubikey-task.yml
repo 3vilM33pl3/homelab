@@ -1,4 +1,6 @@
 ---
+# Installs YubiKey management tools, PIV utilities, and configures step-ca
+# systemd service for hardware security key integration
 - name: Install Yubikey tools
   apt:
     name: yubikey-manager

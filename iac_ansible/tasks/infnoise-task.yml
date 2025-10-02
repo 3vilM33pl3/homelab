@@ -1,4 +1,6 @@
 ---
+# Installs and configures Infnoise hardware random number generator with proper
+# udev rules and service management
 - name: Install Infnoise package
   apt:
     name: infnoise
