@@ -1,45 +1,43 @@
-- name: upgrade/update apt based hosts
-  hosts: ca
+- name: Install Certificate Authority software
+  hosts: cert_authority
   become: yes
-  vars:
-    ansible_user: olivier
   tasks:
   - name: Set hostname
     hostname:
       name: "ca.metatao.net"
-    tags: always
+    tags: [config, hostname]
 
   - name: Set timezone to UTC
     timezone:
       name: UTC
-    tags: always
+    tags: [config, timezone]
 
   - include_tasks: tasks/apt-upgrade-tasks.yml
-    tags: always
+    tags: [system, apt]
 
   - include_tasks: tasks/vim-task.yml
-    tags: always
+    tags: [tools, editor]
 
   - include_tasks: tasks/yubikey-task.yml
-    tags: always
+    tags: [security, yubikey]
 
   - include_tasks: tasks/step-cli-task.yml
-    tags: always
+    tags: [ca, step-cli]
 
   - include_tasks: tasks/step-ca-task.yml
-    tags: always
+    tags: [ca, step-ca]
 
   - include_tasks: tasks/tools-task.yml
-    tags: always
+    tags: [tools, system-tools]
 
   - include_tasks: tasks/ntp-task.yml
-    tags: always
+    tags: [system, ntp]
 
   - include_tasks: tasks/i2c-task.yml
-    tags: always
+    tags: [hardware, i2c]
 
   - include_tasks: tasks/info-display-task.yml
-    tags: always
-  
+    tags: [hardware, display]
+
   - include_tasks: tasks/infnoise-task.yml
-    tags: always
+    tags: [security, hardware, infnoise]

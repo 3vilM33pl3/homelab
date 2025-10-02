@@ -1,21 +1,37 @@
-- name: upgrade/update apt based hosts
-  hosts: all
+- name: Install basic software on cluster nodes
+  hosts: cluster
   become: yes
-  vars:
-    ansible_user: olivier
   tasks:
-    - name: install cluster
-      include_tasks: cluster/k3s-server.yml
-      tags: always
-      when: inventory_hostname == 'white'
+  - name: Set hostname
+    hostname:
+      name: "{{ inventory_hostname }}.metatao.net"
+    tags: [config, hostname]
 
-    - name: install agent
-      include_tasks: cluster/k3s-agent.yml
-      tags: always
-      when: inventory_hostname == 'orange' or inventory_hostname == 'pink'
+  - name: Set timezone to UTC
+    timezone:
+      name: UTC
+    tags: [config, timezone]
 
-    - name: install k3s dashboard
-      include_tasks: cluster/k3s-dashboard.yml
-      tags: always
-      when: inventory_hostname == 'white'
+  - include_tasks: tasks/apt-upgrade-tasks.yml
+    tags: [system, apt]
 
+  - include_tasks: tasks/vim-task.yml
+    tags: [tools, editor]
+
+  - include_tasks: tasks/tools-task.yml
+    tags: [tools, system-tools]
+
+  - include_tasks: tasks/ntp-task.yml
+    tags: [system, ntp]
+
+  - include_tasks: tasks/rust-task.yml
+    tags: [dev, rust]
+
+  - include_tasks: tasks/rust-cargo-task.yml
+    tags: [dev, rust, cargo]
+
+  - include_tasks: tasks/i2c-task.yml
+    tags: [hardware, i2c]
+
+  - include_tasks: tasks/info-display-task.yml
+    tags: [hardware, display]

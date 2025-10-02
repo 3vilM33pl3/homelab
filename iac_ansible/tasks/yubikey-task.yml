@@ -5,13 +5,13 @@
   apt:
     name: yubikey-manager
     state: present
-  tags: always
+  
 
 - name: Install Yubikey PIV tools
   apt:
     name: yubico-piv-tool 
     state: present
-  tags: always
+  
 
 - name: Enable pcscd service
   systemd:
@@ -19,7 +19,7 @@
     enabled: yes
     state: started
     daemon_reload: yes
-  tags: always
+  
 
 - name: Copy step-ca systemd service
   copy:
@@ -28,10 +28,10 @@
     owner: root
     group: root
     mode: '0644'
-  tags: always
+  
 
 - name: Reload systemd daemon
   systemd:
     daemon_reload: yes
-  tags: always
+  
 

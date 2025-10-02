@@ -1,6 +1,6 @@
 # Ansible Infrastructure as Code
 
-This directory contains Ansible playbooks and roles for managing homelab infrastructure, including Kubernetes cluster setup and certificate authority configuration.
+This directory contains Ansible playbooks and roles for managing homelab infrastructure and certificate authority configuration.
 
 ## Directory Structure
 
@@ -8,12 +8,7 @@ This directory contains Ansible playbooks and roles for managing homelab infrast
 iac_ansible/
 ├── ca/                      # Certificate Authority specific files
 │   └── inventory-ca.ini     # Inventory for CA server
-├── cluster/                 # K3s Kubernetes cluster setup
-│   ├── k3s-server.yml      # K3s server installation
-│   ├── k3s-agent.yml       # K3s agent installation
-│   └── uninstall/          # K3s uninstallation playbooks
 ├── config/                  # System configuration playbooks
-│   ├── enable-cgroups.yml  # Enable cgroups for K3s
 │   └── ssh-key-auth.yml    # Setup SSH key authentication
 ├── tasks/                  # Individual software installation tasks
 │   ├── apt-upgrade-tasks.yml
@@ -24,15 +19,15 @@ iac_ansible/
 │   ├── ntp-task.yml
 │   └── ...
 ├── inventory-homelab.ini   # Main homelab inventory
-├── software-install.yml    # Master software installation playbook
-└── install-ca.yml         # Certificate Authority setup playbook
+├── install-ca.yml         # Certificate Authority setup playbook
+└── install-cluster.yml    # Cluster nodes setup playbook
 ```
 
 ## Prerequisites
 
 - Ansible 2.9+ installed on control machine
 - SSH access to target hosts
-- Python 3 installed on target hosts (or use bootstrap commands below)
+- Python 3 installed on target hosts
 
 ## Common Usage
 
@@ -43,32 +38,37 @@ iac_ansible/
 ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory-homelab.ini config/ssh-key-auth.yml --ask-pass
 ```
 
-### K3s Cluster Management
+### Cluster Nodes Setup
 
 ```bash
-# Enable cgroups (required before K3s installation on Raspberry Pi)
-ansible-playbook -i inventory-homelab.ini config/enable-cgroups.yml
+# Full deployment (recommended)
+./deploy-cluster.sh
 
-# Install K3s server (on 'white' host)
-ansible-playbook -i inventory-homelab.ini cluster/k3s-server.yml
+# Deploy with specific tags
+./deploy-cluster.sh --tags config,system
 
-# Install K3s agents (on 'pink' and 'orange' hosts)
-ansible-playbook -i inventory-homelab.ini cluster/k3s-agent.yml
+# Skip slow cargo package compilation
+./deploy-cluster.sh --skip-tags cargo
 
-# Uninstall K3s cluster
-ansible-playbook -i inventory-homelab.ini cluster/uninstall/k3-uninstall-agent.yml
-ansible-playbook -i inventory-homelab.ini cluster/uninstall/k3-uninstall-server.yml
+# Dry-run (check mode)
+./deploy-cluster.sh --check
+
+# Or use ansible-playbook directly
+ansible-playbook -i inventory-homelab.ini install-cluster.yml
+
+# System updates only
+ansible-playbook -i inventory-homelab.ini install-cluster.yml --tags apt
 ```
 
-### Software Installation
+#### Available Tags
 
-```bash
-# Install all software packages on homelab
-ansible-playbook -i inventory-homelab.ini software-install.yml
-
-# Install with specific tags
-ansible-playbook -i inventory-homelab.ini software-install.yml --tags "apt-upgrade"
-```
+- `config`: Hostname and timezone configuration
+- `system`: System updates, NTP
+- `tools`: Essential CLI tools (vim, networking tools)
+- `dev`: Rust toolchain and cargo packages
+- `hardware`: I2C support, info display
+- `apt`: APT updates only
+- `cargo`: Cargo package compilation (slow on ARM)
 
 ### Certificate Authority Setup
 
@@ -101,24 +101,43 @@ This hardware RNG is particularly important for the CA server as it generates ro
 
 ### inventory-homelab.ini
 Defines the main homelab hosts:
-- **white**: K3s server node
-- **pink**: K3s agent node
-- **orange**: K3s agent node
+- **white**: Main server node
+- **pink**: Secondary node
+- **orange**: Secondary node
 
 ### ca/inventory-ca.ini
 Defines the Certificate Authority server host.
 
+## Configuration
+
+### Ansible User
+
+The default user for Ansible operations is configured in `inventory-homelab.ini`:
+
+```ini
+[cluster:vars]
+ansible_user=olivier
+
+[cert_authority:vars]
+ansible_user=olivier
+```
+
+To use a different user, modify the `ansible_user` variable in the inventory file.
+
+### GitHub Downloads
+
+Package downloads from GitHub include SHA256 checksum verification when available. Checksum files should be named `<package>.sha256` and uploaded as release assets.
+
 ## Important Notes
 
-- K3s is installed with Flannel CNI disabled (for using Cilium instead)
-- All hosts use Python 3.11 as the interpreter
-- The `k3s-agent-config` file is automatically generated during server setup
-- Software tasks use the "always" tag for consistent execution
+- Downloads from GitHub are verified with SHA256 checksums when available
+- Cargo package compilation can take 10+ minutes per package on ARM systems
+- Use specific tags to run only required tasks for faster deployments
 
 ## Adding New Software
 
 1. Create a new task file in `tasks/` directory
-2. Include the task file in `software-install.yml` or `install-ca.yml`
+2. Include the task file in `install-cluster.yml` or `install-ca.yml` as appropriate
 3. Use appropriate tags for conditional execution
 
 Example task file:
@@ -133,6 +152,4 @@ Example task file:
 ## Troubleshooting
 
 - If SSH connection fails, check SSH key authentication setup
-- For K3s issues, ensure cgroups are enabled and reboot if necessary
 - Check Python installation on target hosts for Ansible module execution
-- For Alpine Linux hosts, some tasks may need to use `raw` module initially
