@@ -9,7 +9,7 @@
     github_repo: "3vilM33pl3/homelab"
     package_filename: "info-display_1.2.0-1_arm64.deb"
   when: inventory_hostname in ['white', 'orange', 'pink', 'ca']
-  tags: always
+  
 
 - name: Get latest release info from GitHub
   uri:
@@ -21,32 +21,67 @@
   delegate_to: localhost
   become: no
   run_once: true
-  tags: always
+  
 
 - name: Check if release exists
   set_fact:
     release_exists: "{{ github_release.status == 200 }}"
   run_once: true
-  tags: always
+  
 
-- name: Extract download URL for the debian package
+- name: Extract download URL and checksum for the debian package
   set_fact:
     package_download_url: "{{ github_release.json.assets | selectattr('name', 'match', '.*\\.deb$') | map(attribute='browser_download_url') | first }}"
-  when: 
+    package_checksum_url: "{{ github_release.json.assets | selectattr('name', 'match', '.*\\.deb\\.sha256$') | map(attribute='browser_download_url') | first | default('') }}"
+  when:
     - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
-  tags: always
+  
 
-- name: Download info-display debian package from GitHub
+- name: Download checksum file if available
+  get_url:
+    url: "{{ package_checksum_url }}"
+    dest: "/tmp/{{ package_filename }}.sha256"
+    mode: '0644'
+    timeout: 10
+  when:
+    - inventory_hostname in ['white', 'orange', 'pink', 'ca']
+    - release_exists
+    - package_checksum_url | length > 0
+  ignore_errors: yes
+  register: checksum_download
+  
+
+- name: Read checksum from file
+  slurp:
+    src: "/tmp/{{ package_filename }}.sha256"
+  register: checksum_file
+  when:
+    - inventory_hostname in ['white', 'orange', 'pink', 'ca']
+    - release_exists
+    - checksum_download is succeeded
+  
+
+- name: Extract checksum value
+  set_fact:
+    package_checksum: "sha256:{{ (checksum_file.content | b64decode).split()[0] }}"
+  when:
+    - inventory_hostname in ['white', 'orange', 'pink', 'ca']
+    - release_exists
+    - checksum_download is succeeded
+  
+
+- name: Download info-display debian package from GitHub (with checksum)
   get_url:
     url: "{{ package_download_url }}"
     dest: "/tmp/{{ package_filename }}"
+    checksum: "{{ package_checksum | default(omit) }}"
     mode: '0644'
     timeout: 30
-  when: 
+  when:
     - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
-  tags: always
+  
 
 - name: Display message when no release is available
   debug:
@@ -54,7 +89,7 @@
   when: 
     - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - not release_exists
-  tags: always
+  
 
 
 - name: Install info-display package
@@ -64,7 +99,7 @@
   when: 
     - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
-  tags: always
+  
 
 - name: Clean up temporary package file
   file:
@@ -73,7 +108,7 @@
   when: 
     - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
-  tags: always
+  
 
 - name: Enable and start info-display systemd service
   systemd:
@@ -84,4 +119,4 @@
   when: 
     - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
-  tags: always
+  

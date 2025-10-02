@@ -9,16 +9,16 @@
     register: update_result
     retries: 5
     until: update_result is success
-    tags: always
+    
 
   - name: list upgradeable
     shell: apt list --upgradeable
     register: upgradeable
-    tags: always
+    
 
   - name: show update results
     debug: var=upgradeable.stdout_lines
-    tags: always
+    
 
   - name: upgrade
     apt:
@@ -29,18 +29,18 @@
     retries: 5
     register: upgrade_res
     until: upgrade_res is success
-    tags: always
+    
 
   - name: identify autoremove candidates
     shell: apt-get --dry-run autoremove | grep Remv || true
     register: autoremove_list
-    tags: always
+    
 
   - name: show autoremove candidates
     debug: var=autoremove_list.stdout_lines
-    tags: always
+    
 
   - name: Execute autoremove
     apt:
       autoremove: yes
-    tags: always
+    

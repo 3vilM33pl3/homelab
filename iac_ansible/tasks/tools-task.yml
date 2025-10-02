@@ -4,7 +4,7 @@
   apt:
     name: "{{ item }}"
     state: present
-  tags: always
+  
   with_items:
     - lshw
     - lsof

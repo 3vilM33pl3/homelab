@@ -1,6 +1,15 @@
 ---
 # Installs essential Rust CLI tools via cargo package manager for system
 # administration and monitoring
+- name: Install build dependencies for Rust compilation
+  apt:
+    name:
+      - build-essential
+      - pkg-config
+      - libssl-dev
+    state: present
+    update_cache: yes
+
 - name: Install Rust CLI tools using cargo
   become_user: "{{ ansible_user }}"
   community.general.cargo:

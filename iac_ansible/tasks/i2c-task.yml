@@ -7,7 +7,7 @@
       - i2c-tools
       - python3-smbus
     state: present
-  tags: always
+  
 
 - name: Enable I2C interface in /boot/firmware/config.txt
   become: yes

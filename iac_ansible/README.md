@@ -41,12 +41,34 @@ ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory-homelab.ini config
 ### Cluster Nodes Setup
 
 ```bash
-# Install basic software on cluster nodes (white, pink, orange)
+# Full deployment (recommended)
+./deploy-cluster.sh
+
+# Deploy with specific tags
+./deploy-cluster.sh --tags config,system
+
+# Skip slow cargo package compilation
+./deploy-cluster.sh --skip-tags cargo
+
+# Dry-run (check mode)
+./deploy-cluster.sh --check
+
+# Or use ansible-playbook directly
 ansible-playbook -i inventory-homelab.ini install-cluster.yml
 
 # System updates only
-ansible-playbook -i inventory-homelab.ini tasks/apt-upgrade-tasks.yml
+ansible-playbook -i inventory-homelab.ini install-cluster.yml --tags apt
 ```
+
+#### Available Tags
+
+- `config`: Hostname and timezone configuration
+- `system`: System updates, NTP
+- `tools`: Essential CLI tools (vim, networking tools)
+- `dev`: Rust toolchain and cargo packages
+- `hardware`: I2C support, info display
+- `apt`: APT updates only
+- `cargo`: Cargo package compilation (slow on ARM)
 
 ### Certificate Authority Setup
 
@@ -86,10 +108,31 @@ Defines the main homelab hosts:
 ### ca/inventory-ca.ini
 Defines the Certificate Authority server host.
 
+## Configuration
+
+### Ansible User
+
+The default user for Ansible operations is configured in `inventory-homelab.ini`:
+
+```ini
+[cluster:vars]
+ansible_user=olivier
+
+[cert_authority:vars]
+ansible_user=olivier
+```
+
+To use a different user, modify the `ansible_user` variable in the inventory file.
+
+### GitHub Downloads
+
+Package downloads from GitHub include SHA256 checksum verification when available. Checksum files should be named `<package>.sha256` and uploaded as release assets.
+
 ## Important Notes
 
-- All hosts use Python 3.11 as the interpreter
-- Software tasks use the "always" tag for consistent execution
+- Downloads from GitHub are verified with SHA256 checksums when available
+- Cargo package compilation can take 10+ minutes per package on ARM systems
+- Use specific tags to run only required tasks for faster deployments
 
 ## Adding New Software
 

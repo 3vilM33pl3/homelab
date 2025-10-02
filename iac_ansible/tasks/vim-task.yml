@@ -4,7 +4,7 @@
   apt:
     name: vim
     state: present
-  tags: always
+  
 
 - name: Ensure 'set paste' is in Vim configuration
   lineinfile:
