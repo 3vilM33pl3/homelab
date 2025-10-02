@@ -1,6 +1,6 @@
 ---
 # Installs essential Rust CLI tools via cargo package manager for system
-# administration, monitoring, and Kubernetes cluster management
+# administration and monitoring
 - name: Install Rust CLI tools using cargo
   become_user: "{{ ansible_user }}"
   community.general.cargo:
