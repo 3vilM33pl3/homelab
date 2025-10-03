@@ -1,0 +1,183 @@
+---
+# Configures SSH to use certificate-based authentication with step-ca
+# Generates host certificates and configures SSH server to trust user certificates
+# Requires step-cli to be installed and configured
+
+- name: Check if step-cli is installed
+  command: which step
+  register: step_installed
+  changed_when: false
+  failed_when: false
+
+- name: Fail if step-cli is not installed
+  fail:
+    msg: "step-cli is not installed. Please install it first using step-cli-task.yml"
+  when: step_installed.rc != 0
+
+- name: Bootstrap step-cli with homelab CA
+  command: >
+    step ca bootstrap
+    --ca-url "https://ca.metatao.net"
+    --fingerprint 4b4daffdab26a650aaea1777ea311451f1a12d29b14ab284357ce9ea02514038
+    --force
+  args:
+    creates: /root/.step/config/defaults.json
+  environment:
+    STEPPATH: /root/.step
+
+- name: Ensure SSH keys directory exists
+  file:
+    path: /etc/ssh/keys
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Check if host certificate already exists
+  stat:
+    path: /etc/ssh/keys/ssh_host_ca_key-cert.pub
+  register: host_cert_stat
+
+- name: Create temporary directory for certificate generation
+  file:
+    path: /tmp/ssh_keys_temp
+    state: directory
+    mode: '0700'
+  when: not host_cert_stat.stat.exists
+
+- name: Create temporary password file for provisioner
+  copy:
+    content: "{{ step_provisioner_password }}"
+    dest: /tmp/step_provisioner_pass
+    mode: '0600'
+  when:
+    - not host_cert_stat.stat.exists
+    - step_provisioner_password is defined
+    - step_provisioner_password | length > 0
+  no_log: true
+
+- name: Create empty password file for unencrypted host key
+  shell: echo -n "" > /tmp/step_key_pass && chmod 600 /tmp/step_key_pass
+  when: not host_cert_stat.stat.exists
+
+- name: Generate host certificate and keys with provisioner password
+  shell: |
+    cd /tmp/ssh_keys_temp
+    step ssh certificate --host \
+      --principal {{ inventory_hostname }} \
+      --principal {{ inventory_hostname }}.metatao.net \
+      --provisioner olivier@robotmotel.com \
+      --provisioner-password-file /tmp/step_provisioner_pass \
+      --password-file /tmp/step_key_pass \
+      --force \
+      {{ inventory_hostname }} ssh_host_ca_key
+  args:
+    creates: /tmp/ssh_keys_temp/ssh_host_ca_key
+  when:
+    - not host_cert_stat.stat.exists
+    - step_provisioner_password is defined
+    - step_provisioner_password | length > 0
+  environment:
+    STEPPATH: /root/.step
+
+- name: Remove temporary password files
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/step_provisioner_pass
+    - /tmp/step_key_pass
+  when:
+    - step_provisioner_password is defined
+    - step_provisioner_password | length > 0
+  no_log: true
+
+- name: Move ssh_host_ca_key to /etc/ssh/keys/
+  ansible.builtin.command:
+    cmd: mv /tmp/ssh_keys_temp/ssh_host_ca_key /etc/ssh/keys/ssh_host_ca_key
+  when: not host_cert_stat.stat.exists
+
+- name: Move ssh_host_ca_key.pub to /etc/ssh/keys/
+  ansible.builtin.command:
+    cmd: mv /tmp/ssh_keys_temp/ssh_host_ca_key.pub /etc/ssh/keys/ssh_host_ca_key.pub
+  when: not host_cert_stat.stat.exists
+
+- name: Move ssh_host_ca_key-cert.pub to /etc/ssh/keys/
+  ansible.builtin.command:
+    cmd: mv /tmp/ssh_keys_temp/ssh_host_ca_key-cert.pub /etc/ssh/keys/ssh_host_ca_key-cert.pub
+  when: not host_cert_stat.stat.exists
+
+- name: Set permissions on ssh_host_ca_key
+  file:
+    path: /etc/ssh/keys/ssh_host_ca_key
+    owner: root
+    group: root
+    mode: '0600'
+  when: not host_cert_stat.stat.exists
+
+- name: Set permissions on ssh_host_ca_key.pub
+  file:
+    path: /etc/ssh/keys/ssh_host_ca_key.pub
+    owner: root
+    group: root
+    mode: '0644'
+  when: not host_cert_stat.stat.exists
+
+- name: Set permissions on ssh_host_ca_key-cert.pub
+  file:
+    path: /etc/ssh/keys/ssh_host_ca_key-cert.pub
+    owner: root
+    group: root
+    mode: '0644'
+  when: not host_cert_stat.stat.exists
+
+- name: Remove temporary directory for certificate generation
+  file:
+    path: /tmp/ssh_keys_temp
+    state: absent
+  when: not host_cert_stat.stat.exists
+- name: Get trusted user CA public key from step-ca
+  shell: step ssh config --roots
+  register: user_ca_key
+  changed_when: false
+
+- name: Write trusted user CA public key
+  copy:
+    content: "{{ user_ca_key.stdout }}"
+    dest: /etc/ssh/keys/ssh_user_ca_key.pub
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Ensure sshd_config.d directory exists
+  file:
+    path: /etc/ssh/sshd_config.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Configure SSH to use certificates
+  copy:
+    content: |
+      # SSH Certificate Authentication Configuration
+      TrustedUserCAKeys /etc/ssh/keys/ssh_user_ca_key.pub
+      HostKey /etc/ssh/keys/ssh_host_ca_key
+      HostCertificate /etc/ssh/keys/ssh_host_ca_key-cert.pub
+    dest: /etc/ssh/sshd_config.d/ca_ssh.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart ssh
+
+- name: Validate SSH configuration
+  command: sshd -t
+  changed_when: false
+  register: sshd_test
+  failed_when: sshd_test.rc != 0
+
+- name: Restart SSH service
+  systemd:
+    name: ssh
+    state: restarted
+  when: sshd_test.rc == 0

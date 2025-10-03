@@ -1,6 +1,16 @@
 - name: Install basic software on cluster nodes
   hosts: cluster
   become: yes
+  vars_prompt:
+    - name: step_provisioner_password
+      prompt: "Enter step-ca provisioner password (for SSH certificate generation, press Enter to skip)"
+      private: yes
+      default: ""
+  handlers:
+    - name: restart ssh
+      systemd:
+        name: ssh
+        state: restarted
   tasks:
   - name: Set hostname
     hostname:
@@ -24,6 +34,9 @@
   - include_tasks: tasks/ntp-task.yml
     tags: [system, ntp]
 
+  - include_tasks: tasks/step-cli-task.yml
+    tags: [security, step-cli]
+
   - include_tasks: tasks/rust-task.yml
     tags: [dev, rust]
 
@@ -35,3 +48,6 @@
 
   - include_tasks: tasks/info-display-task.yml
     tags: [hardware, display]
+
+  - include_tasks: tasks/ssh-cert-task.yml
+    tags: [security, ssh, certificates]

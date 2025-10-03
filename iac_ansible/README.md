@@ -65,10 +65,35 @@ ansible-playbook -i inventory-homelab.ini install-cluster.yml --tags apt
 - `config`: Hostname and timezone configuration
 - `system`: System updates, NTP
 - `tools`: Essential CLI tools (vim, networking tools)
+- `security`: SSH certificates, step-cli
+- `ssh`: SSH certificate configuration only
+- `certificates`: SSH certificate configuration only
 - `dev`: Rust toolchain and cargo packages
 - `hardware`: I2C support, info display
 - `apt`: APT updates only
 - `cargo`: Cargo package compilation (slow on ARM)
+
+### SSH Certificate Authentication
+
+The cluster nodes can be configured to use SSH certificate-based authentication with step-ca:
+
+```bash
+# Configure SSH certificates on all cluster nodes
+ansible-playbook -i inventory-homelab.ini install-cluster.yml --tags ssh
+
+# Or include in full deployment
+./deploy-cluster.sh
+```
+
+This configuration:
+- Generates host certificates for each node using step-ca
+- Configures SSH to trust user certificates signed by the CA
+- Sets up proper principals (hostname and FQDN)
+- Automatically restarts SSH service
+
+**Prerequisites:**
+- step-ca must be running and accessible
+- step-cli must be installed on cluster nodes (included in deployment)
 
 ### Certificate Authority Setup
 
