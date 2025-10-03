@@ -29,14 +29,27 @@
   run_once: true
   
 
-- name: Extract download URL and checksum for the debian package
+- name: Extract download URL for the debian package
   set_fact:
     package_download_url: "{{ github_release.json.assets | selectattr('name', 'match', '.*\\.deb$') | map(attribute='browser_download_url') | first }}"
-    package_checksum_url: "{{ github_release.json.assets | selectattr('name', 'match', '.*\\.deb\\.sha256$') | map(attribute='browser_download_url') | first | default('') }}"
+  when:
+    - inventory_hostname in ['white', 'orange', 'pink', 'ca']
+    - release_exists
+
+- name: Look for checksum file in release assets
+  set_fact:
+    package_checksum_url: "{{ github_release.json.assets | selectattr('name', 'match', '.*\\.deb\\.sha256$') | map(attribute='browser_download_url') | list | first | default('') }}"
   when:
     - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
   
+
+- name: Display checksum availability
+  debug:
+    msg: "{% if package_checksum_url | default('') | length > 0 %}Checksum file found, will verify download{% else %}No checksum file available, skipping verification{% endif %}"
+  when:
+    - inventory_hostname in ['white', 'orange', 'pink', 'ca']
+    - release_exists
 
 - name: Download checksum file if available
   get_url:
@@ -47,6 +60,7 @@
   when:
     - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
+    - package_checksum_url is defined
     - package_checksum_url | length > 0
   ignore_errors: yes
   register: checksum_download
