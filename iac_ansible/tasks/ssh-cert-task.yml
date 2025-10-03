@@ -1,0 +1,104 @@
+---
+# Configures SSH to use certificate-based authentication with step-ca
+# Generates host certificates and configures SSH server to trust user certificates
+# Requires step-cli to be installed and configured
+
+- name: Check if step-cli is installed
+  command: which step
+  register: step_installed
+  changed_when: false
+  failed_when: false
+
+- name: Fail if step-cli is not installed
+  fail:
+    msg: "step-cli is not installed. Please install it first using step-cli-task.yml"
+  when: step_installed.rc != 0
+
+- name: Ensure SSH keys directory exists
+  file:
+    path: /etc/ssh/keys
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Check if host certificate already exists
+  stat:
+    path: /etc/ssh/keys/ssh_host_ca_key-cert.pub
+  register: host_cert_stat
+
+- name: Create temporary directory for certificate generation
+  file:
+    path: /tmp/ssh_keys_temp
+    state: directory
+    mode: '0700'
+  when: not host_cert_stat.stat.exists
+
+- name: Generate host certificate and keys (no passphrase)
+  shell: |
+    cd /tmp/ssh_keys_temp
+    step ssh certificate --host \
+      --principal {{ inventory_hostname }} \
+      --principal {{ inventory_hostname }}.metatao.net \
+      --no-password \
+      {{ inventory_hostname }} ssh_host_ca_key
+  args:
+    creates: /tmp/ssh_keys_temp/ssh_host_ca_key
+  when: not host_cert_stat.stat.exists
+  environment:
+    STEPPATH: /root/.step
+
+- name: Move generated keys to /etc/ssh/keys/
+  shell: |
+    mv /tmp/ssh_keys_temp/* /etc/ssh/keys/
+    chmod 600 /etc/ssh/keys/ssh_host_ca_key
+    chmod 644 /etc/ssh/keys/ssh_host_ca_key.pub
+    chmod 644 /etc/ssh/keys/ssh_host_ca_key-cert.pub
+    rm -rf /tmp/ssh_keys_temp
+  when: not host_cert_stat.stat.exists
+
+- name: Get trusted user CA public key from step-ca
+  shell: step ssh config --roots
+  register: user_ca_key
+  changed_when: false
+
+- name: Write trusted user CA public key
+  copy:
+    content: "{{ user_ca_key.stdout }}"
+    dest: /etc/ssh/keys/ssh_user_ca_key.pub
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Ensure sshd_config.d directory exists
+  file:
+    path: /etc/ssh/sshd_config.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Configure SSH to use certificates
+  copy:
+    content: |
+      # SSH Certificate Authentication Configuration
+      TrustedUserCAKeys /etc/ssh/keys/ssh_user_ca_key.pub
+      HostKey /etc/ssh/keys/ssh_host_ca_key
+      HostCertificate /etc/ssh/keys/ssh_host_ca_key-cert.pub
+    dest: /etc/ssh/sshd_config.d/ca_ssh.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart ssh
+
+- name: Validate SSH configuration
+  command: sshd -t
+  changed_when: false
+  register: sshd_test
+  failed_when: sshd_test.rc != 0
+
+- name: Restart SSH service
+  systemd:
+    name: ssh
+    state: restarted
+  when: sshd_test.rc == 0
