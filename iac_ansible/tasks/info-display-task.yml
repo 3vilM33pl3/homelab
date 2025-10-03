@@ -73,8 +73,10 @@
   when:
     - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
+    - checksum_download is defined
+    - checksum_download is not skipped
     - checksum_download is succeeded
-  
+
 
 - name: Extract checksum value
   set_fact:
@@ -82,7 +84,8 @@
   when:
     - inventory_hostname in ['white', 'orange', 'pink', 'ca']
     - release_exists
-    - checksum_download is succeeded
+    - checksum_file is defined
+    - checksum_file is not skipped
   
 
 - name: Download info-display debian package from GitHub (with checksum)
