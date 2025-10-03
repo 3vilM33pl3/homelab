@@ -14,6 +14,17 @@
     msg: "step-cli is not installed. Please install it first using step-cli-task.yml"
   when: step_installed.rc != 0
 
+- name: Bootstrap step-cli with homelab CA
+  command: >
+    step ca bootstrap
+    --ca-url "https://ca.metatao.net"
+    --fingerprint 4b4daffdab26a650aaea1777ea311451f1a12d29b14ab284357ce9ea02514038
+    --force
+  args:
+    creates: /root/.step/config/defaults.json
+  environment:
+    STEPPATH: /root/.step
+
 - name: Ensure SSH keys directory exists
   file:
     path: /etc/ssh/keys
@@ -34,19 +45,52 @@
     mode: '0700'
   when: not host_cert_stat.stat.exists
 
-- name: Generate host certificate and keys (no passphrase)
+- name: Create temporary password file for provisioner
+  copy:
+    content: "{{ step_provisioner_password }}"
+    dest: /tmp/step_provisioner_pass
+    mode: '0600'
+  when:
+    - not host_cert_stat.stat.exists
+    - step_provisioner_password is defined
+    - step_provisioner_password | length > 0
+  no_log: true
+
+- name: Create empty password file for unencrypted host key
+  shell: echo -n "" > /tmp/step_key_pass && chmod 600 /tmp/step_key_pass
+  when: not host_cert_stat.stat.exists
+
+- name: Generate host certificate and keys with provisioner password
   shell: |
     cd /tmp/ssh_keys_temp
     step ssh certificate --host \
       --principal {{ inventory_hostname }} \
       --principal {{ inventory_hostname }}.metatao.net \
-      --no-password \
+      --provisioner olivier@robotmotel.com \
+      --provisioner-password-file /tmp/step_provisioner_pass \
+      --password-file /tmp/step_key_pass \
+      --force \
       {{ inventory_hostname }} ssh_host_ca_key
   args:
     creates: /tmp/ssh_keys_temp/ssh_host_ca_key
-  when: not host_cert_stat.stat.exists
+  when:
+    - not host_cert_stat.stat.exists
+    - step_provisioner_password is defined
+    - step_provisioner_password | length > 0
   environment:
     STEPPATH: /root/.step
+
+- name: Remove temporary password files
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/step_provisioner_pass
+    - /tmp/step_key_pass
+  when:
+    - step_provisioner_password is defined
+    - step_provisioner_password | length > 0
+  no_log: true
 
 - name: Move generated keys to /etc/ssh/keys/
   shell: |

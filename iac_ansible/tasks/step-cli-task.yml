@@ -25,9 +25,13 @@
 - name: Update apt after adding Smallstep repo
   apt:
     update_cache: yes
-    cache_valid_time: 3600
+  retries: 3
+  delay: 5
+  register: apt_update
+  until: apt_update is succeeded
 
 - name: Install step-cli
   apt:
     name: step-cli
     state: present
+    update_cache: yes

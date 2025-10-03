@@ -1,6 +1,11 @@
 - name: Install basic software on cluster nodes
   hosts: cluster
   become: yes
+  vars_prompt:
+    - name: step_provisioner_password
+      prompt: "Enter step-ca provisioner password (for SSH certificate generation, press Enter to skip)"
+      private: yes
+      default: ""
   handlers:
     - name: restart ssh
       systemd:
