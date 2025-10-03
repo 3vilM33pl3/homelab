@@ -92,15 +92,50 @@
     - step_provisioner_password | length > 0
   no_log: true
 
-- name: Move generated keys to /etc/ssh/keys/
-  shell: |
-    mv /tmp/ssh_keys_temp/* /etc/ssh/keys/
-    chmod 600 /etc/ssh/keys/ssh_host_ca_key
-    chmod 644 /etc/ssh/keys/ssh_host_ca_key.pub
-    chmod 644 /etc/ssh/keys/ssh_host_ca_key-cert.pub
-    rm -rf /tmp/ssh_keys_temp
+- name: Move ssh_host_ca_key to /etc/ssh/keys/
+  ansible.builtin.command:
+    cmd: mv /tmp/ssh_keys_temp/ssh_host_ca_key /etc/ssh/keys/ssh_host_ca_key
   when: not host_cert_stat.stat.exists
 
+- name: Move ssh_host_ca_key.pub to /etc/ssh/keys/
+  ansible.builtin.command:
+    cmd: mv /tmp/ssh_keys_temp/ssh_host_ca_key.pub /etc/ssh/keys/ssh_host_ca_key.pub
+  when: not host_cert_stat.stat.exists
+
+- name: Move ssh_host_ca_key-cert.pub to /etc/ssh/keys/
+  ansible.builtin.command:
+    cmd: mv /tmp/ssh_keys_temp/ssh_host_ca_key-cert.pub /etc/ssh/keys/ssh_host_ca_key-cert.pub
+  when: not host_cert_stat.stat.exists
+
+- name: Set permissions on ssh_host_ca_key
+  file:
+    path: /etc/ssh/keys/ssh_host_ca_key
+    owner: root
+    group: root
+    mode: '0600'
+  when: not host_cert_stat.stat.exists
+
+- name: Set permissions on ssh_host_ca_key.pub
+  file:
+    path: /etc/ssh/keys/ssh_host_ca_key.pub
+    owner: root
+    group: root
+    mode: '0644'
+  when: not host_cert_stat.stat.exists
+
+- name: Set permissions on ssh_host_ca_key-cert.pub
+  file:
+    path: /etc/ssh/keys/ssh_host_ca_key-cert.pub
+    owner: root
+    group: root
+    mode: '0644'
+  when: not host_cert_stat.stat.exists
+
+- name: Remove temporary directory for certificate generation
+  file:
+    path: /tmp/ssh_keys_temp
+    state: absent
+  when: not host_cert_stat.stat.exists
 - name: Get trusted user CA public key from step-ca
   shell: step ssh config --roots
   register: user_ca_key
