@@ -1,0 +1,52 @@
+---
+- name: Deploy Kubernetes cluster with Kubespray
+  hosts: localhost
+  gather_facts: no
+  vars:
+    kubespray_dir: "{{ playbook_dir }}/../kubespray"
+    inventory_name: metatao
+    ansible_user: olivier
+
+  tasks:
+    - name: Ensure kubespray directory exists
+      stat:
+        path: "{{ kubespray_dir }}"
+      register: kubespray_path
+      failed_when: not kubespray_path.stat.exists
+
+    - name: Check if virtual environment exists
+      stat:
+        path: "{{ kubespray_dir }}/venv"
+      register: venv_path
+
+    - name: Display setup instructions if venv doesn't exist
+      debug:
+        msg: |
+          Virtual environment not found. Please set it up first:
+
+          cd {{ kubespray_dir }}
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+      when: not venv_path.stat.exists
+
+    - name: Fail if venv doesn't exist
+      fail:
+        msg: "Virtual environment not found at {{ kubespray_dir }}/venv. Please run setup first."
+      when: not venv_path.stat.exists
+
+    - name: Run Kubespray cluster deployment
+      shell: |
+        source {{ kubespray_dir }}/venv/bin/activate
+        ansible-playbook -i inventory/{{ inventory_name }}/inventory.ini \
+          -u {{ ansible_user }} -b \
+          cluster.yml
+      args:
+        chdir: "{{ kubespray_dir }}"
+        executable: /bin/bash
+      register: kubespray_output
+
+    - name: Display deployment output
+      debug:
+        var: kubespray_output.stdout_lines
+      when: kubespray_output.stdout_lines is defined

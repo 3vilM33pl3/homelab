@@ -102,6 +102,62 @@ This configuration:
 ansible-playbook -i ca/inventory-ca.ini install-ca.yml
 ```
 
+### Kubernetes Cluster Deployment
+
+The homelab includes Kubernetes deployment using [Kubespray](https://github.com/kubernetes-sigs/kubespray) as a git submodule.
+
+#### Initial Setup
+
+```bash
+# Initialize kubespray submodule (first time only)
+git submodule update --init --recursive
+
+# Setup Python virtual environment for kubespray
+cd ../kubespray
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cd ../iac_ansible
+```
+
+#### Deploy Kubernetes
+
+```bash
+# Deploy Kubernetes cluster on white (control plane), orange and pink (workers)
+ansible-playbook install-kubernetes.yml
+
+# Or run kubespray directly
+cd ../kubespray
+source venv/bin/activate
+ansible-playbook -i inventory/metatao/inventory.ini -u olivier -b cluster.yml
+```
+
+#### Cluster Configuration
+
+- **Control Plane**: white.metatao.net (10.22.6.91)
+- **Workers**: orange.metatao.net (10.22.6.92), pink.metatao.net (10.22.6.93)
+- **Network Plugin**: Calico
+- **Kubernetes Version**: 1.33.5
+- **Container Runtime**: containerd
+
+#### Access Cluster
+
+The kubeconfig is automatically generated at `../kubespray/inventory/metatao/artifacts/admin.conf`:
+
+```bash
+# Copy to standard location
+mkdir -p ~/.kube
+cp ../kubespray/inventory/metatao/artifacts/admin.conf ~/.kube/config
+
+# Or use directly
+export KUBECONFIG=/home/olivier/Projects/homelab/kubespray/inventory/metatao/artifacts/admin.conf
+
+# Verify cluster
+kubectl get nodes
+```
+
+**Note**: The cluster is configured with cgroup memory support enabled on all Raspberry Pi nodes (required for Kubernetes).
+
 ### Infnoise True Random Number Generator (TRNG)
 
 The Certificate Authority server uses an Infnoise TRNG hardware device to enhance cryptographic security. This provides:
