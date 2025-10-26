@@ -70,6 +70,11 @@ ansible-playbook -i inventory-homelab.ini install-cluster.yml --tags apt
 - `certificates`: SSH certificate configuration only
 - `dev`: Rust toolchain and cargo packages
 - `hardware`: I2C support, info display
+- `storage`: All SSD and storage-related tasks
+- `ssd-setup`: Format and mount SSDs only
+- `ssd-migration`: Migrate Kubernetes data to SSD
+- `local-path`: Install Local Path Provisioner for persistent storage
+- `persistent-storage`: Install Local Path Provisioner for persistent storage
 - `apt`: APT updates only
 - `cargo`: Cargo package compilation (slow on ARM)
 
@@ -157,6 +162,112 @@ kubectl get nodes
 ```
 
 **Note**: The cluster is configured with cgroup memory support enabled on all Raspberry Pi nodes (required for Kubernetes).
+
+### SSD Storage Configuration
+
+Each Raspberry Pi node has a 477GB NVMe SSD installed. These SSDs are configured for optimal Kubernetes performance and distributed storage.
+
+#### Setup SSD Storage
+
+```bash
+# Complete SSD setup (format, mount, migrate Kubernetes data, install storage provisioner)
+ansible-playbook -i inventory-homelab.ini install-cluster.yml --tags storage
+
+# Or run individual steps:
+
+# 1. Format and mount SSDs only
+ansible-playbook -i inventory-homelab.ini install-cluster.yml --tags ssd-setup
+
+# 2. Migrate Kubernetes data to SSDs (requires SSDs to be mounted first)
+ansible-playbook -i inventory-homelab.ini install-cluster.yml --tags ssd-migration
+
+# 3. Install Local Path Provisioner for persistent storage
+ansible-playbook -i inventory-homelab.ini install-cluster.yml --tags local-path
+```
+
+#### What Gets Configured
+
+**SSD Setup (`ssd-setup` tag):**
+- Formats NVMe SSDs as ext4
+- Mounts SSDs at `/mnt/ssd` with persistent fstab entries
+- Creates directory structure for Kubernetes components
+- Configures proper permissions
+
+**Kubernetes Migration (`ssd-migration` tag):**
+- **containerd** (`/var/lib/containerd`) → `/mnt/ssd/containerd`
+- **kubelet** (`/var/lib/kubelet`) → `/mnt/ssd/kubelet`
+- **etcd** (`/var/lib/etcd`) → `/mnt/ssd/etcd` (control plane only)
+- Creates symlinks from original paths to SSD locations
+- Gracefully restarts services after migration
+
+**Local Path Provisioner (`local-path` tag):**
+- Installs Rancher Local Path Provisioner
+- Configures storage path: `/mnt/ssd/local-path-provisioner`
+- Sets up default StorageClass for dynamic provisioning
+- Provides local persistent storage on SSDs (no replication)
+- Lightweight and reliable for single-node storage
+
+#### Performance Benefits
+
+- **10-100x faster I/O** for etcd (critical for cluster stability)
+- **Faster pod startup** and image pulls (containerd on SSD)
+- **SSD-backed persistent storage** via Local Path Provisioner
+- **Dynamic volume provisioning** for stateful workloads
+- **Local storage performance** without network overhead
+
+#### Using Local Path Provisioner Storage
+
+After Local Path Provisioner is installed, create PersistentVolumeClaims using the `local-path` StorageClass (set as default):
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-app-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path  # Can be omitted if using default
+  resources:
+    requests:
+      storage: 10Gi
+```
+
+**Note:** Local Path Provisioner creates volumes on a single node (no replication). Pods using these volumes will be scheduled on the node where the data resides.
+
+#### Verification
+
+```bash
+# Check SSD mounts
+ansible -i inventory-homelab.ini cluster -m shell -a "df -h /mnt/ssd"
+
+# Verify Kubernetes data is on SSD
+ansible -i inventory-homelab.ini cluster -m shell -a "ls -la /var/lib/containerd /var/lib/kubelet"
+
+# Check Local Path Provisioner status
+kubectl get pods -n local-path-storage
+kubectl get storageclass
+
+# Test with a PVC
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+EOF
+```
+
+#### Prerequisites
+
+- **kubectl** must be configured with cluster access
+- Kubernetes cluster must be running (deploy with `install-kubernetes.yml` first)
+- SSDs must be mounted at `/mnt/ssd` (run with `--tags ssd-setup` first)
 
 ### Infnoise True Random Number Generator (TRNG)
 

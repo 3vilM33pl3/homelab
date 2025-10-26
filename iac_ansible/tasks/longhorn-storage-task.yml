@@ -1,0 +1,248 @@
+---
+- name: Check if SSD is mounted
+  command: mountpoint -q /mnt/ssd
+  register: ssd_mounted
+  changed_when: false
+  failed_when: false
+  tags: always
+
+- name: Fail if SSD is not mounted
+  fail:
+    msg: "SSD is not mounted at /mnt/ssd. Please run ssd-setup-task.yml first."
+  when: ssd_mounted.rc != 0
+  tags: always
+
+- name: Install Longhorn dependencies
+  apt:
+    name:
+      - open-iscsi
+      - nfs-common
+      - util-linux
+      - curl
+    state: present
+    update_cache: yes
+  tags: always
+
+- name: Enable and start iscsid service
+  systemd:
+    name: iscsid
+    enabled: yes
+    state: started
+  tags: always
+
+- name: Check if multipathd is installed
+  command: which multipathd
+  register: multipathd_check
+  changed_when: false
+  failed_when: false
+  tags: always
+
+- name: Disable multipathd if present (conflicts with Longhorn)
+  systemd:
+    name: multipathd
+    enabled: no
+    state: stopped
+  when: multipathd_check.rc == 0
+  ignore_errors: yes
+  tags: always
+
+- name: Create Longhorn storage directory on SSD
+  file:
+    path: /mnt/ssd/longhorn
+    state: directory
+    mode: '0755'
+  tags: always
+
+- name: Check if kubectl is available
+  command: which kubectl
+  register: kubectl_check
+  changed_when: false
+  failed_when: false
+  delegate_to: localhost
+  become: no
+  run_once: true
+  tags: always
+
+- name: Check if Helm is installed
+  command: which helm
+  register: helm_check
+  changed_when: false
+  failed_when: false
+  delegate_to: localhost
+  become: no
+  run_once: true
+  tags: always
+
+- name: Display Helm installation instructions
+  debug:
+    msg: |
+      Helm is not installed on the control machine. To complete Longhorn setup, install Helm:
+
+      curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      Then run this playbook again with --tags longhorn-deploy
+  when: helm_check.rc != 0
+  run_once: true
+  tags: always
+
+- name: Add Longhorn Helm repository
+  command: helm repo add longhorn https://charts.longhorn.io
+  delegate_to: localhost
+  become: no
+  when: helm_check.rc == 0
+  register: helm_repo_add
+  changed_when: "'already exists' not in helm_repo_add.stderr"
+  failed_when: false
+  run_once: true
+  tags: always
+
+- name: Update Helm repositories
+  command: helm repo update
+  delegate_to: localhost
+  become: no
+  when: helm_check.rc == 0
+  run_once: true
+  tags: always
+
+- name: Create longhorn-system namespace
+  command: kubectl create namespace longhorn-system
+  delegate_to: localhost
+  become: no
+  when: kubectl_check.rc == 0 and helm_check.rc == 0
+  register: namespace_create
+  changed_when: "'created' in namespace_create.stdout"
+  failed_when: namespace_create.rc != 0 and 'AlreadyExists' not in namespace_create.stderr
+  run_once: true
+  tags: always
+
+- name: Create Longhorn values file
+  copy:
+    dest: /tmp/longhorn-values.yaml
+    content: |
+      defaultSettings:
+        defaultDataPath: /mnt/ssd/longhorn
+        defaultReplicaCount: "2"
+        guaranteedEngineManagerCPU: "5"
+        guaranteedReplicaManagerCPU: "5"
+      persistence:
+        defaultClass: true
+        defaultClassReplicaCount: "2"
+      longhornManager:
+        priorityClass: ~
+        tolerations:
+          - key: node-role.kubernetes.io/control-plane
+            operator: Exists
+            effect: NoSchedule
+      longhornDriver:
+        priorityClass: ~
+        tolerations:
+          - key: node-role.kubernetes.io/control-plane
+            operator: Exists
+            effect: NoSchedule
+      longhornUI:
+        replicas: 1
+  delegate_to: localhost
+  become: no
+  when: kubectl_check.rc == 0 and helm_check.rc == 0
+  run_once: true
+  tags: always
+
+- name: Check if Longhorn is already installed
+  command: helm list -n longhorn-system -o json
+  delegate_to: localhost
+  become: no
+  register: longhorn_installed
+  changed_when: false
+  failed_when: false
+  when: kubectl_check.rc == 0 and helm_check.rc == 0
+  run_once: true
+  tags: always
+
+- name: Install Longhorn via Helm
+  command: >
+    helm install longhorn longhorn/longhorn
+    --namespace longhorn-system
+    --values /tmp/longhorn-values.yaml
+    --set defaultSettings.defaultDataPath=/mnt/ssd/longhorn
+    --set persistence.defaultClass=true
+    --set persistence.defaultClassReplicaCount=2
+  delegate_to: localhost
+  become: no
+  when:
+    - kubectl_check.rc == 0
+    - helm_check.rc == 0
+    - longhorn_installed.stdout == '[]' or longhorn_installed.stdout == ''
+  register: longhorn_install
+  run_once: true
+  tags: always
+
+- name: Wait for Longhorn deployment to be ready
+  command: kubectl wait --for=condition=ready pod -l app=longhorn-manager -n longhorn-system --timeout=300s
+  delegate_to: localhost
+  become: no
+  when:
+    - kubectl_check.rc == 0
+    - helm_check.rc == 0
+    - longhorn_install is changed
+  ignore_errors: yes
+  run_once: true
+  tags: always
+
+- name: Get Longhorn UI service information
+  command: kubectl get svc -n longhorn-system longhorn-frontend -o jsonpath='{.spec.clusterIP}'
+  delegate_to: localhost
+  become: no
+  register: longhorn_ui
+  when: kubectl_check.rc == 0 and helm_check.rc == 0
+  changed_when: false
+  failed_when: false
+  run_once: true
+  tags: always
+
+- name: Display Longhorn installation summary
+  debug:
+    msg: |
+      Longhorn distributed storage setup completed:
+
+      Storage Path: /mnt/ssd/longhorn (on each node)
+      Namespace: longhorn-system
+      Default Replica Count: 2
+
+      {% if longhorn_ui.stdout is defined and longhorn_ui.stdout != '' %}
+      Longhorn UI: http://{{ longhorn_ui.stdout }}
+
+      To access the UI, run:
+      kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
+      Then visit: http://localhost:8080
+      {% endif %}
+
+      To create a PersistentVolumeClaim using Longhorn:
+
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: my-pvc
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: longhorn
+        resources:
+          requests:
+            storage: 10Gi
+
+      Verify installation:
+      kubectl get pods -n longhorn-system
+      kubectl get storageclass
+  when: kubectl_check.rc == 0 and helm_check.rc == 0
+  run_once: true
+  tags: always
+
+- name: Clean up temporary files
+  file:
+    path: /tmp/longhorn-values.yaml
+    state: absent
+  delegate_to: localhost
+  become: no
+  when: kubectl_check.rc == 0 and helm_check.rc == 0
+  run_once: true
+  tags: always

@@ -1,0 +1,121 @@
+---
+- name: Check if SSD is mounted
+  command: mountpoint -q /mnt/ssd
+  register: ssd_mounted
+  changed_when: false
+  failed_when: false
+  tags: always
+
+- name: Fail if SSD is not mounted
+  fail:
+    msg: "SSD is not mounted at /mnt/ssd. Please run ssd-setup-task.yml first."
+  when: ssd_mounted.rc != 0
+  tags: always
+
+- name: Check if kubectl is available
+  command: which kubectl
+  register: kubectl_check
+  changed_when: false
+  failed_when: false
+  delegate_to: localhost
+  become: no
+  run_once: true
+  tags: always
+
+- name: Install Local Path Provisioner
+  shell: |
+    kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.28/deploy/local-path-storage.yaml
+  delegate_to: localhost
+  become: no
+  when: kubectl_check.rc == 0
+  register: provisioner_install
+  changed_when: "'created' in provisioner_install.stdout or 'configured' in provisioner_install.stdout"
+  run_once: true
+  tags: always
+
+- name: Wait for Local Path Provisioner to be ready
+  command: kubectl wait --for=condition=ready pod -l app=local-path-provisioner -n local-path-storage --timeout=60s
+  delegate_to: localhost
+  become: no
+  when: kubectl_check.rc == 0
+  run_once: true
+  tags: always
+  ignore_errors: yes
+
+- name: Configure Local Path Provisioner to use SSD storage
+  shell: |
+    kubectl patch configmap local-path-config -n local-path-storage --type json -p '[{"op": "replace", "path": "/data/config.json", "value": "{\n        \"nodePathMap\":[\n        {\n                \"node\":\"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n                \"paths\":[\"/mnt/ssd/local-path-provisioner\"]\n        }\n        ]\n}"}]'
+  delegate_to: localhost
+  become: no
+  when: kubectl_check.rc == 0
+  register: config_patch
+  changed_when: "'patched' in config_patch.stdout"
+  run_once: true
+  tags: always
+
+- name: Restart Local Path Provisioner to apply configuration
+  command: kubectl rollout restart deployment local-path-provisioner -n local-path-storage
+  delegate_to: localhost
+  become: no
+  when: kubectl_check.rc == 0 and config_patch is changed
+  run_once: true
+  tags: always
+
+- name: Wait for restarted provisioner to be ready
+  command: kubectl wait --for=condition=ready pod -l app=local-path-provisioner -n local-path-storage --timeout=60s
+  delegate_to: localhost
+  become: no
+  when: kubectl_check.rc == 0 and config_patch is changed
+  run_once: true
+  tags: always
+
+- name: Set local-path as default StorageClass
+  shell: |
+    kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+  delegate_to: localhost
+  become: no
+  when: kubectl_check.rc == 0
+  register: default_sc
+  changed_when: "'patched' in default_sc.stdout"
+  run_once: true
+  tags: always
+
+- name: Get StorageClass information
+  command: kubectl get storageclass local-path -o jsonpath='{.metadata.name}'
+  delegate_to: localhost
+  become: no
+  register: sc_info
+  when: kubectl_check.rc == 0
+  changed_when: false
+  run_once: true
+  tags: always
+
+- name: Display Local Path Provisioner installation summary
+  debug:
+    msg: |
+      Local Path Provisioner setup completed:
+
+      Storage Path: /mnt/ssd/local-path-provisioner (on each node)
+      Namespace: local-path-storage
+      StorageClass: local-path (default)
+
+      To create a PersistentVolumeClaim:
+
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: my-pvc
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 10Gi
+
+      Verify installation:
+      kubectl get pods -n local-path-storage
+      kubectl get storageclass
+  when: kubectl_check.rc == 0
+  run_once: true
+  tags: always

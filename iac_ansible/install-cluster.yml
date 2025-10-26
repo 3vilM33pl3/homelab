@@ -51,3 +51,12 @@
 
   - include_tasks: tasks/ssh-cert-task.yml
     tags: [security, ssh, certificates]
+
+  - include_tasks: tasks/ssd-setup-task.yml
+    tags: [storage, ssd, ssd-setup]
+
+  - include_tasks: tasks/k8s-ssd-migration-task.yml
+    tags: [storage, k8s-storage, ssd-migration]
+
+  - include_tasks: tasks/local-path-provisioner-task.yml
+    tags: [storage, local-path, persistent-storage]

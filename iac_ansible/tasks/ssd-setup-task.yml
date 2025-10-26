@@ -1,0 +1,121 @@
+---
+- name: Install required packages for disk management
+  apt:
+    name:
+      - parted
+      - e2fsprogs
+    state: present
+    update_cache: yes
+
+- name: Check if NVMe SSD exists
+  stat:
+    path: /dev/nvme0n1
+  register: nvme_device
+
+- name: Detect SSD device information
+  command: lsblk -ndo NAME,TYPE /dev/nvme0n1
+  register: nvme_info
+  when: nvme_device.stat.exists
+  changed_when: false
+
+- name: Display SSD information
+  debug:
+    msg: "NVMe SSD found: {{ nvme_info.stdout }}"
+  when: nvme_device.stat.exists
+
+- name: Create single partition on NVMe SSD
+  parted:
+    device: /dev/nvme0n1
+    number: 1
+    state: present
+    part_start: 0%
+    part_end: 100%
+    fs_type: ext4
+  when: nvme_device.stat.exists
+
+- name: Format NVMe partition as ext4
+  filesystem:
+    fstype: ext4
+    dev: /dev/nvme0n1p1
+    force: no
+  when: nvme_device.stat.exists
+
+- name: Create SSD mount directory
+  file:
+    path: /mnt/ssd
+    state: directory
+    mode: '0755'
+
+- name: Get UUID of NVMe partition
+  command: blkid -s UUID -o value /dev/nvme0n1p1
+  register: nvme_uuid
+  when: nvme_device.stat.exists
+  changed_when: false
+
+- name: Add NVMe partition to fstab
+  mount:
+    path: /mnt/ssd
+    src: "UUID={{ nvme_uuid.stdout }}"
+    fstype: ext4
+    opts: defaults,noatime
+    state: mounted
+  when: nvme_device.stat.exists
+
+- name: Verify SSD is mounted
+  command: mountpoint -q /mnt/ssd
+  register: mount_check
+  changed_when: false
+  failed_when: false
+  when: nvme_device.stat.exists
+
+- name: Display mount status
+  debug:
+    msg: "SSD successfully mounted at /mnt/ssd"
+  when: nvme_device.stat.exists and mount_check.rc == 0
+
+- name: Create Kubernetes storage directories on SSD
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  with_items:
+    - /mnt/ssd/containerd
+    - /mnt/ssd/kubelet
+    - /mnt/ssd/longhorn
+  when: nvme_device.stat.exists
+
+- name: Create etcd directory on SSD (control plane only)
+  file:
+    path: /mnt/ssd/etcd
+    state: directory
+    mode: '0700'
+  when:
+    - nvme_device.stat.exists
+    - inventory_hostname in groups['kube_control_plane'] | default([])
+
+- name: Set ownership for storage directories
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    recurse: yes
+  with_items:
+    - { path: /mnt/ssd/containerd, owner: root, group: root }
+    - { path: /mnt/ssd/kubelet, owner: root, group: root }
+    - { path: /mnt/ssd/longhorn, owner: root, group: root }
+  when: nvme_device.stat.exists
+
+- name: Set ownership for etcd directory (control plane only)
+  file:
+    path: /mnt/ssd/etcd
+    owner: root
+    group: root
+    recurse: yes
+  when:
+    - nvme_device.stat.exists
+    - inventory_hostname in groups['kube_control_plane'] | default([])
+
+- name: Display completion message
+  debug:
+    msg: "SSD setup completed. Mount point: /mnt/ssd, Available space: {{ ansible_mounts | selectattr('mount', 'equalto', '/mnt/ssd') | map(attribute='size_available') | first | default(0) | human_readable }}"
+  when: nvme_device.stat.exists

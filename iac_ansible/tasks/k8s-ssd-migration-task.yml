@@ -1,0 +1,196 @@
+---
+- name: Check if SSD is mounted
+  command: mountpoint -q /mnt/ssd
+  register: ssd_mounted
+  changed_when: false
+  failed_when: false
+
+- name: Fail if SSD is not mounted
+  fail:
+    msg: "SSD is not mounted at /mnt/ssd. Please run ssd-setup-task.yml first."
+  when: ssd_mounted.rc != 0
+
+# Containerd migration
+- name: Check if containerd is already on SSD
+  stat:
+    path: /var/lib/containerd
+  register: containerd_path
+
+- name: Check if containerd path is a symlink
+  stat:
+    path: /var/lib/containerd
+    follow: no
+  register: containerd_link
+
+- name: Migrate containerd data to SSD
+  block:
+    - name: Stop containerd service
+      systemd:
+        name: containerd
+        state: stopped
+
+    - name: Copy containerd data to SSD
+      synchronize:
+        src: /var/lib/containerd/
+        dest: /mnt/ssd/containerd/
+      delegate_to: "{{ inventory_hostname }}"
+
+    - name: Backup original containerd directory
+      command: mv /var/lib/containerd /var/lib/containerd.backup
+      args:
+        creates: /var/lib/containerd.backup
+
+    - name: Create symlink from /var/lib/containerd to SSD
+      file:
+        src: /mnt/ssd/containerd
+        dest: /var/lib/containerd
+        state: link
+
+    - name: Start containerd service
+      systemd:
+        name: containerd
+        state: started
+
+  when:
+    - containerd_path.stat.exists
+    - not containerd_link.stat.islnk
+
+# Kubelet migration
+- name: Check if kubelet directory exists
+  stat:
+    path: /var/lib/kubelet
+  register: kubelet_path
+
+- name: Check if kubelet path is a symlink
+  stat:
+    path: /var/lib/kubelet
+    follow: no
+  register: kubelet_link
+
+- name: Migrate kubelet data to SSD
+  block:
+    - name: Stop kubelet service
+      systemd:
+        name: kubelet
+        state: stopped
+
+    - name: Copy kubelet data to SSD
+      synchronize:
+        src: /var/lib/kubelet/
+        dest: /mnt/ssd/kubelet/
+      delegate_to: "{{ inventory_hostname }}"
+
+    - name: Backup original kubelet directory
+      command: mv /var/lib/kubelet /var/lib/kubelet.backup
+      args:
+        creates: /var/lib/kubelet.backup
+
+    - name: Create symlink from /var/lib/kubelet to SSD
+      file:
+        src: /mnt/ssd/kubelet
+        dest: /var/lib/kubelet
+        state: link
+
+    - name: Start kubelet service
+      systemd:
+        name: kubelet
+        state: started
+
+  when:
+    - kubelet_path.stat.exists
+    - not kubelet_link.stat.islnk
+
+# etcd migration (control plane only)
+- name: Check if this is a control plane node
+  set_fact:
+    is_control_plane: "{{ inventory_hostname in groups['kube_control_plane'] | default([]) }}"
+
+- name: Check if etcd data directory exists
+  stat:
+    path: /var/lib/etcd
+  register: etcd_path
+  when: is_control_plane
+
+- name: Check if etcd path is a symlink
+  stat:
+    path: /var/lib/etcd
+    follow: no
+  register: etcd_link
+  when: is_control_plane
+
+- name: Migrate etcd data to SSD (control plane only)
+  block:
+    - name: Stop kubelet to stop etcd
+      systemd:
+        name: kubelet
+        state: stopped
+
+    - name: Wait for etcd to stop
+      wait_for:
+        path: /var/lib/etcd/member
+        state: absent
+        timeout: 60
+      ignore_errors: yes
+
+    - name: Copy etcd data to SSD
+      synchronize:
+        src: /var/lib/etcd/
+        dest: /mnt/ssd/etcd/
+      delegate_to: "{{ inventory_hostname }}"
+
+    - name: Backup original etcd directory
+      command: mv /var/lib/etcd /var/lib/etcd.backup
+      args:
+        creates: /var/lib/etcd.backup
+
+    - name: Create symlink from /var/lib/etcd to SSD
+      file:
+        src: /mnt/ssd/etcd
+        dest: /var/lib/etcd
+        state: link
+
+    - name: Start kubelet service
+      systemd:
+        name: kubelet
+        state: started
+
+    - name: Wait for etcd to be healthy
+      shell: |
+        export ETCDCTL_API=3
+        etcdctl --endpoints=https://127.0.0.1:2379 \
+          --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+          --cert=/etc/kubernetes/pki/etcd/server.crt \
+          --key=/etc/kubernetes/pki/etcd/server.key \
+          endpoint health
+      register: etcd_health
+      until: etcd_health.rc == 0
+      retries: 12
+      delay: 5
+      ignore_errors: yes
+
+  when:
+    - is_control_plane
+    - etcd_path.stat.exists
+    - not etcd_link.stat.islnk
+
+- name: Display migration summary
+  debug:
+    msg: |
+      Kubernetes data migration to SSD completed:
+      - containerd: {{ 'migrated' if (containerd_path.stat.exists and not containerd_link.stat.islnk) else 'already on SSD or skipped' }}
+      - kubelet: {{ 'migrated' if (kubelet_path.stat.exists and not kubelet_link.stat.islnk) else 'already on SSD or skipped' }}
+      - etcd: {{ 'migrated' if (is_control_plane and etcd_path.stat.exists and not etcd_link.stat.islnk) else 'skipped (not control plane or already migrated)' }}
+
+- name: Verify services are running
+  systemd:
+    name: "{{ item }}"
+    state: started
+  with_items:
+    - containerd
+    - kubelet
+  register: service_status
+
+- name: Display service status
+  debug:
+    msg: "All Kubernetes services are running on SSD storage"
+  when: service_status is succeeded
