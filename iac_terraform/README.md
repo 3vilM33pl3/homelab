@@ -17,6 +17,7 @@ This OpenTofu/Terraform project manages the initial setup for the homelab infras
 
 1. **Nginx Installation**: Installs and enables nginx on the local desktop (monolith.metatao.net)
 2. **Kubernetes Hello World**: Deploys a simple hello-world application to the Kubernetes cluster running on pink, orange, and white nodes
+3. **WireGuard VPN Server**: Deploys WireGuard VPN on monolith for secure remote access to the homelab network
 
 ## Prerequisites
 
@@ -121,11 +122,15 @@ kubectl get svc -n hello-world
 
 #### Access hello-world application
 ```bash
-# Get the service IP/port
+# Get the service and NodePort
 kubectl get svc hello-world -n hello-world
 
-# Test the application
-curl http://<SERVICE-IP>
+# Access via any node IP and the NodePort (e.g., 31559)
+# Replace <NODE-IP> with pink, orange, or white node IP
+curl http://<NODE-IP>:<NODE-PORT>
+
+# Example with node IP 10.22.6.x and NodePort 31559:
+curl http://10.22.6.x:31559
 ```
 
 ### Destroy Infrastructure
@@ -153,11 +158,14 @@ kubeconfig_path       = "/custom/path/to/kubeconfig"
 
 ```
 iac_terraform/
-├── main.tf         # Main configuration (OpenTofu/Terraform compatible)
-├── variables.tf    # Variable definitions
-├── outputs.tf      # Output definitions
-├── .gitignore      # Git ignore patterns for state files
-└── README.md       # This file
+├── main.tf                  # Main configuration (nginx, Kubernetes)
+├── variables.tf             # Variable definitions for main resources
+├── outputs.tf               # Output definitions for main resources
+├── wireguard.tf             # WireGuard VPN server configuration
+├── wireguard-variables.tf   # WireGuard-specific variables
+├── wireguard-outputs.tf     # WireGuard outputs and next steps
+├── .gitignore               # Git ignore patterns for state files
+└── README.md                # This file
 ```
 
 ## Resources Created
@@ -166,7 +174,7 @@ iac_terraform/
 - **Kubernetes**:
   - Namespace: `hello-world`
   - Deployment: `hello-world` (2 replicas by default)
-  - Service: `hello-world` (LoadBalancer type)
+  - Service: `hello-world` (NodePort type)
 
 ## Troubleshooting
 
@@ -189,16 +197,156 @@ sudo journalctl -u nginx
 
 ### Service not accessible
 ```bash
-# Check if LoadBalancer IP is assigned
+# Check service status and get NodePort
 kubectl get svc -n hello-world
 
-# If using MetalLB or similar, verify the IP pool configuration
-# If external IP shows <pending>, you may need to configure a LoadBalancer provider
+# Test from a cluster node
+curl http://localhost:<NODE-PORT>
+
+# Test from outside the cluster using node IP
+curl http://<NODE-IP>:<NODE-PORT>
+
+# Check pod status
+kubectl get pods -n hello-world
+
+# Check pod logs if needed
+kubectl logs -n hello-world -l app=hello-world
 ```
+
+## WireGuard VPN Setup
+
+This configuration includes a WireGuard VPN server deployment on monolith for secure remote access to your homelab.
+
+### WireGuard Features
+
+- **Server Location**: monolith.metatao.net
+- **Management UI**: wg-easy web interface
+- **Public Endpoint**: vpn.metatao.net:51820
+- **VPN Network**: 10.8.0.x (clients assigned 10.8.0.2, 10.8.0.3, etc.)
+- **Accessible Networks**: 10.22.6.0/24 (your homelab)
+- **DNS Server**: 10.22.6.1 (OpenWrt)
+
+### WireGuard Configuration
+
+The WireGuard deployment is controlled by variables in `wireguard-variables.tf`. To customize:
+
+```hcl
+# Create terraform.tfvars
+wireguard_enabled = true
+wireguard_ui_password = "your-secure-password"
+wireguard_port = 51820
+wireguard_ui_port = 51821
+```
+
+**Important**: Set the UI password via environment variable for security:
+
+```bash
+export TF_VAR_wireguard_ui_password="your-secure-password"
+tofu apply
+```
+
+**Note**: The password will be automatically hashed using bcrypt when the container is deployed. If you don't set a password, the default password "changeme" will be used (you should change this!).
+
+### WireGuard Deployment Steps
+
+1. **Deploy with OpenTofu**:
+   ```bash
+   cd iac_terraform
+   export TF_VAR_wireguard_ui_password="your-secure-password"
+   tofu apply
+   ```
+
+2. **Configure OpenWrt Port Forwarding** (one-time manual step):
+   - Login to OpenWrt at http://10.22.6.1
+   - Navigate to **Network > Firewall > Port Forwards**
+   - Add new rule:
+     - Name: `WireGuard VPN`
+     - Protocol: `UDP`
+     - External port: `51820`
+     - Internal IP: `<monolith-ip>`
+     - Internal port: `51820`
+
+3. **Access wg-easy Management UI**:
+   ```bash
+   # On monolith or via SSH tunnel
+   http://localhost:51821
+   ```
+
+4. **Create VPN Clients**:
+   - Click "New Client" in the web UI
+   - Enter client name (e.g., "iPhone", "Laptop")
+   - Download configuration:
+     - **Mobile**: Scan QR code with WireGuard app
+     - **Desktop**: Download .conf file
+
+5. **Install WireGuard Client**:
+   - **iOS**: Install WireGuard from App Store, scan QR code
+   - **Android**: Install WireGuard from Play Store, scan QR code
+   - **Linux**: Install WireGuard, import .conf file
+   - **macOS/Windows**: Install WireGuard GUI, import .conf file
+
+6. **Test VPN Connection**:
+   ```bash
+   # Connect via WireGuard client, then test:
+   ping 10.22.6.1
+   nslookup monolith.metatao.net
+   ssh olivier@10.22.6.x
+   ```
+
+### WireGuard Management
+
+#### View Container Status
+```bash
+docker ps | grep wg-easy
+docker logs wg-easy
+```
+
+#### Restart WireGuard
+```bash
+docker restart wg-easy
+```
+
+#### Stop WireGuard
+```bash
+docker stop wg-easy
+```
+
+#### Update WireGuard Configuration
+```bash
+# Modify wireguard-variables.tf or set environment variables
+export TF_VAR_wireguard_port=51820
+tofu apply
+```
+
+### Disable WireGuard
+
+To disable WireGuard without destroying other infrastructure:
+
+```hcl
+# In terraform.tfvars
+wireguard_enabled = false
+```
+
+```bash
+tofu apply
+```
+
+### WireGuard Security Notes
+
+- The wg-easy web UI is only accessible locally on monolith (port 51821)
+- To access the UI remotely, use SSH port forwarding:
+  ```bash
+  ssh -L 51821:localhost:51821 olivier@monolith.metatao.net
+  # Then access http://localhost:51821 in your browser
+  ```
+- Change the default UI password immediately
+- WireGuard uses Curve25519 public/private key pairs (not X.509 certificates)
+- Keys are automatically generated by wg-easy on first run
+- Configuration is persisted in `~/.wg-easy` on monolith
 
 ## Next Steps
 
 - Configure ingress controller for external access
-- Add TLS certificates from ca.metatao.net
+- Add TLS certificates from ca.metatao.net for wg-easy web UI
 - Expand to deploy additional applications
 - Integrate with existing Ansible infrastructure

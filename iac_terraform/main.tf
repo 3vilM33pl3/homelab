@@ -123,7 +123,7 @@ resource "kubernetes_service" "hello_world" {
       protocol    = "TCP"
     }
 
-    type = "LoadBalancer"
+    type = "NodePort"
   }
 
   depends_on = [kubernetes_deployment.hello_world]
